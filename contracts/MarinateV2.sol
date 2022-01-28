@@ -120,7 +120,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
 
     constructor(
         address _UMAMI,
-        address _mUMAMI,
         address _dateTime
     ) {
         UMAMI = _UMAMI;
