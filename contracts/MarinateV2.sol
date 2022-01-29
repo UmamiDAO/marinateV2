@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./mUMAMI.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // interfaces
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,12 +17,11 @@ interface IDateTime {
     function getDay(uint256 timestamp) external returns (uint8);
 }
 
-contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
+contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     using SafeERC20 for IERC20;
 
     uint32 constant DAY_IN_SECONDS = 86400;
     address public immutable UMAMI;
-    address public immutable MUMAMI;
     IDateTime public dateTime;
     uint256 public totalStaked = 0;
     uint256 public totalMultipliedStaked = 0;
@@ -120,10 +119,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
 
     constructor(
         address _UMAMI,
-        address _dateTime
-    ) {
+        address _dateTime,
+        string memory name, 
+        string memory symbol
+    ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
-        MUMAMI = address(new mUMAMI("Marinated UMAMI", "mUMAMI"));
         dateTime = IDateTime(_dateTime);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -208,7 +208,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
 
         // Wrap the sUMAMI into wsUMAMI
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
-        mUMAMI(MUMAMI).mint(msg.sender, amount);
+        _mint(msg.sender, amount);
 
         uint256 multipliedAmount = _getMultipliedAmount(amount);
 
@@ -255,7 +255,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
         multipliedBalance[msg.sender] = 0;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
-        mUMAMI(MUMAMI).burnFrom(msg.sender, info.amount);
+        _burn(msg.sender, info.amount);
 
         emit Withdraw(msg.sender, info.amount);
     }
