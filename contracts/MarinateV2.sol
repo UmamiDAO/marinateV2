@@ -120,7 +120,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     constructor(
         address _UMAMI,
         address _dateTime,
-        string memory name, 
+        string memory name,
         string memory symbol
     ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
@@ -173,7 +173,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(!multiplierStaked[msg.sender][_NFT], "NFT already staked");
 
-        // stake nft multiplier 
+        // stake nft multiplier
         IERC721(_NFT).safeTransferFrom(msg.sender, address(this), tokenId);
         multiplierStaked[msg.sender][_NFT] = true;
 
@@ -216,7 +216,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         // unstake nft
         IERC721(_NFT).safeTransferFrom(address(this), msg.sender, tokenId);
         multiplierStaked[msg.sender][_NFT] = false;
-        
+
         // update totals
         uint256 oldMultipliedAmount = info.multipliedAmount;
         uint256 baseAmount = info.amount;
@@ -228,7 +228,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
             amount: baseAmount,
             multipliedAmount: multipliedAmount
         });
-        
+
         // to handle the case of multiple staked nft's
         multipliedBalance[msg.sender] = multipliedAmount;
         totalMultipliedStaked -= oldMultipliedAmount;
