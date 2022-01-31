@@ -173,8 +173,28 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(!multiplierStaked[msg.sender][_NFT], "NFT already staked");
 
+        // stake nft multiplier 
         IERC721(_NFT).safeTransferFrom(msg.sender, address(this), tokenId);
         multiplierStaked[msg.sender][_NFT] = true;
+
+        // Update existing marinated amount
+        Marinator memory info = marinatorInfo[msg.sender];
+        uint256 multipliedAmount = _getMultipliedAmount(info.amount);
+        uint256 oldMultipliedAmount = info.multipliedAmount;
+
+        // update marinator info
+        marinatorInfo[msg.sender] = Marinator({
+            lastDepositTime: info.lastDepositTime,
+            amount: info.amount,
+            multipliedAmount: multipliedAmount
+        });
+
+        // update totals
+        multipliedBalance[msg.sender] = multipliedAmount;
+        totalMultipliedStaked -= oldMultipliedAmount;
+        totalMultipliedStaked += multipliedAmount;
+
+        // Store the sender's info
         emit StakeMultiplier(msg.sender, _NFT, tokenId);
     }
 
@@ -189,11 +209,31 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(multiplierStaked[msg.sender][_NFT], "NFT not staked");
 
+        // check nft not locked
         Marinator memory info = marinatorInfo[msg.sender];
         require(info.lastDepositTime + DAY_IN_SECONDS < block.timestamp, "NFT locked");
 
+        // unstake nft
         IERC721(_NFT).safeTransferFrom(address(this), msg.sender, tokenId);
         multiplierStaked[msg.sender][_NFT] = false;
+        
+        // update totals
+        uint256 oldMultipliedAmount = info.multipliedAmount;
+        uint256 baseAmount = info.amount;
+        uint256 multipliedAmount = _getMultipliedAmount(baseAmount);
+
+        // Update existing marinated amount
+        marinatorInfo[msg.sender] = Marinator({
+            lastDepositTime: info.lastDepositTime,
+            amount: baseAmount,
+            multipliedAmount: multipliedAmount
+        });
+        
+        // to handle the case of multiple staked nft's
+        multipliedBalance[msg.sender] = multipliedAmount;
+        totalMultipliedStaked -= oldMultipliedAmount;
+        totalMultipliedStaked += multipliedAmount;
+
         emit WithdrawMultiplier(msg.sender, _NFT, tokenId);
     }
 
@@ -294,7 +334,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     }
 
     /**
-     * @notice get the multiplied amount
+     * @notice get the multiplied amount of total share
      * @param amount the unmultiplied amount
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
