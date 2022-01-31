@@ -2,22 +2,20 @@
 pragma solidity ^0.8.0;
 
 // contracts
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { mUMAMI } from "./mUMAMI.sol";
 
 // interfaces
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { IDateTime } from "./interfaces/IDateTime.sol";
 
-interface IDateTime {
-    function getDay(uint256 timestamp) external returns (uint8);
-}
-
-contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
+contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint32 constant DAY_IN_SECONDS = 86400;
@@ -25,6 +23,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     IDateTime public dateTime;
     uint256 public totalStaked = 0;
     uint256 public totalMultipliedStaked = 0;
+
+    mUMAMI public mumami;
 
     /// @notice
     /// @dev mapping (address => excessTokenRewards)
@@ -122,8 +122,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         address _dateTime,
         string memory name,
         string memory symbol
-    ) ERC20(name, symbol) {
+    ) {
         UMAMI = _UMAMI;
+        mumami = new mUMAMI(name, symbol);
         dateTime = IDateTime(_dateTime);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -248,7 +249,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         // Wrap the sUMAMI into wsUMAMI
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
-        _mint(msg.sender, amount);
+        mumami.mint(msg.sender, amount);
 
         uint256 multipliedAmount = _getMultipliedAmount(amount);
 
@@ -295,7 +296,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         multipliedBalance[msg.sender] = 0;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
-        _burn(msg.sender, info.amount);
+        mumami.burnFrom(msg.sender, info.amount);
 
         emit Withdraw(msg.sender, info.amount);
     }

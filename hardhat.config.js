@@ -28,10 +28,21 @@ module.exports = {
       url: process.env.ROPSTEN_URL || "",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
+    ganache: {
+      url: `HTTP://0.0.0.0:8545`,
+      accounts: process.env.GANACHE_KEY !== undefined ? [process.env.GANACHE_KEY] : [],
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
+    src: "./contracts",
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    artifacts: "./artifacts",
+    cache: "./cache",
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

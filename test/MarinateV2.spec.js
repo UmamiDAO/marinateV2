@@ -6,9 +6,8 @@ describe("MarinateV2", async function () {
   let owner, accounts;
   let DateTime;
   let MockedUMAMI;
-  let MarinateV2, sUMAMI, wsUMAMI;
-  let rewardToken;
-  let coreContracts;
+  let MarinateV2;
+  let RewardToken, MockedNFT;
   const provider = await ethers.getDefaultProvider("http://localhost:8545");
 
   async function printTokenBalance(token, address) {
@@ -41,27 +40,20 @@ describe("MarinateV2", async function () {
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
 
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
-    RewardToken.mint(owner.address, ethers.utils.parseEther("100000"))
+    RewardToken.mint(owner.address, ethers.utils.parseEther("100000"));
 
     for (let i = 0; i < 5; i++) {
       await RewardToken.transfer(accounts[i].address, ethers.utils.parseEther("10000"));
     }
   });
 
-  it("Stake - Early Withdraw", async function () {
+  it("Stake - Early Withdraw", async function () {});
 
-  });
+  it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {});
 
-  it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {
+  it("Stake - Stake and Double Withdraw", async function () {});
 
-  });
-
-  it("Stake - Stake and Double Withdraw", async function () {
-
-  });
-
-  it("Stake - Stake and Stake again", async function () {
-  });
+  it("Stake - Stake and Stake again", async function () {});
 
   it("Rewards - 50/50 rewards - 1/3 multipliers", async function () {
     /*
