@@ -5,7 +5,17 @@
 // Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
 
-async function main() {}
+async function main() {
+  const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
+  MarinateV2 = await _MarinateV2.deploy(
+    "0x54155f8558d402074549E2640BBec67291a2838b",
+    "0x54155f8558d402074549E2640BBec67291a2838b",
+    "Marinated UMAMI",
+    "mUMAMI",
+  );
+
+  console.log("Greeter deployed to:", MarinateV2.address);
+}
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.

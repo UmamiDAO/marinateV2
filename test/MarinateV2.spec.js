@@ -1,5 +1,6 @@
 const { assert, expect } = require("chai");
 const { ethers } = require("hardhat");
+const { BigNumber } = require("ethers");
 const SCALE = ethers.utils.parseUnits("1", 40);
 
 describe("MarinateV2", async function () {
@@ -8,7 +9,6 @@ describe("MarinateV2", async function () {
   let MockedUMAMI;
   let MarinateV2;
   let RewardToken, MockedNFT;
-  const provider = await ethers.getDefaultProvider("http://localhost:8545");
 
   async function printTokenBalance(token, address) {
     let balance = await token.balanceOf(address);
@@ -17,6 +17,11 @@ describe("MarinateV2", async function () {
 
   async function fastForward(seconds) {
     await network.provider.send("evm_increaseTime", [seconds]);
+    await network.provider.send("evm_mine");
+  }
+
+  async function setTime(timestamp) {
+    await network.provider.send("evm_setNextBlockTimestamp", [timestamp]);
     await network.provider.send("evm_mine");
   }
 
@@ -40,14 +45,19 @@ describe("MarinateV2", async function () {
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
 
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
-    RewardToken.mint(owner.address, ethers.utils.parseEther("100000"));
+    MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
 
-    for (let i = 0; i < 5; i++) {
-      await RewardToken.transfer(accounts[i].address, ethers.utils.parseEther("10000"));
-    }
+    await MockedUMAMI.transfer(accounts[0].address, ethers.utils.parseEther("10000"));
   });
 
-  it("Stake - Early Withdraw", async function () {});
+  it("does update appropriate storage variables", async function () {
+    let amount = 100000;
+    setTime(1646120114);
+    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await MarinateV2.connect(accounts[0]).stake(amount);
+    //const totalStaked = await MarinateV2.totalStaked();
+    const totalStaked = await MarinateV2.stakedBalance(accounts[0].address);
+  });
 
   it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {});
 

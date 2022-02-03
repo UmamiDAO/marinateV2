@@ -15,7 +15,7 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { IDateTime } from "./interfaces/IDateTime.sol";
 
-contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
+contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     using SafeERC20 for IERC20;
 
     uint32 constant DAY_IN_SECONDS = 86400;
@@ -122,7 +122,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
         address _dateTime,
         string memory name,
         string memory symbol
-    ) {
+    ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
         mumami = new mUMAMI(name, symbol);
         dateTime = IDateTime(_dateTime);
@@ -142,6 +142,68 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
         bytes calldata data
     ) external override returns (bytes4) {
         return MarinateV2.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Hook that is called after any transfer of tokens. This includes
+     * minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * has been transferred to `to`.
+     * - when `from` is zero, `amount` tokens have been minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
+     * - `from` and `to` are never both zero.
+     *
+     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     */
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        if (from == address(0) || to == address(0)) {
+            return;
+        } else {
+            uint256 fromBalance = balanceOf(from);
+            uint256 toBalance = balanceOf(to);
+            // update marinator info
+            Marinator memory marinatorFrom = marinatorInfo[from];
+            Marinator memory marinatorTo = marinatorInfo[to];
+
+            // get new multiplied amounts
+            uint256 multipliedFromAmount = _getMultipliedAmount(fromBalance, from);
+            uint256 multipliedToAmount = _getMultipliedAmount(toBalance, to);
+
+            // calculate total old multiplied amounts
+            uint256 oldMultipliedAmount = marinatorFrom.multipliedAmount + marinatorTo.multipliedAmount;
+            uint256 newMultipliedAmount = multipliedFromAmount + multipliedToAmount;
+
+            // calculate new total multiplied staked
+            totalMultipliedStaked -= oldMultipliedAmount;
+            totalMultipliedStaked += newMultipliedAmount;
+
+            // update marinator info
+            marinatorInfo[from] = Marinator({
+                lastDepositTime: marinatorFrom.lastDepositTime,
+                amount: fromBalance,
+                multipliedAmount: multipliedFromAmount
+            });
+            marinatorInfo[to] = Marinator({
+                lastDepositTime: marinatorTo.lastDepositTime,
+                amount: toBalance,
+                multipliedAmount: multipliedToAmount
+            });
+
+            // update multiplied balances
+            multipliedBalance[from] = multipliedFromAmount;
+            multipliedBalance[to] = multipliedToAmount;
+
+            // update staked balances
+            stakedBalance[from] = fromBalance;
+            stakedBalance[to] = toBalance;
+        }
     }
 
     /**
@@ -180,7 +242,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
 
         // Update existing marinated amount
         Marinator memory info = marinatorInfo[msg.sender];
-        uint256 multipliedAmount = _getMultipliedAmount(info.amount);
+        uint256 multipliedAmount = _getMultipliedAmount(info.amount, msg.sender);
         uint256 oldMultipliedAmount = info.multipliedAmount;
 
         // update marinator info
@@ -221,7 +283,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
         // update totals
         uint256 oldMultipliedAmount = info.multipliedAmount;
         uint256 baseAmount = info.amount;
-        uint256 multipliedAmount = _getMultipliedAmount(baseAmount);
+        uint256 multipliedAmount = _getMultipliedAmount(baseAmount, msg.sender);
 
         // Update existing marinated amount
         marinatorInfo[msg.sender] = Marinator({
@@ -251,7 +313,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
         mumami.mint(msg.sender, amount);
 
-        uint256 multipliedAmount = _getMultipliedAmount(amount);
+        uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
 
         // Store the sender's info
         Marinator memory info = marinatorInfo[msg.sender];
@@ -339,10 +401,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard {
      * @param amount the unmultiplied amount
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
-    function _getMultipliedAmount(uint256 amount) private returns (uint256 multipliedAmount) {
+    function _getMultipliedAmount(uint256 amount, address account) private returns (uint256 multipliedAmount) {
         uint256 multiplier = 1;
         for (uint256 i = 0; i < multiplierTokens.length; i++) {
-            if (multiplierStaked[msg.sender][multiplierTokens[i]]) {
+            if (multiplierStaked[account][multiplierTokens[i]]) {
                 multiplier += multipliers[multiplierTokens[i]];
             }
         }
