@@ -7,7 +7,6 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { mUMAMI } from "./mUMAMI.sol";
 
 // interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -24,7 +23,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     uint256 public totalStaked = 0;
     uint256 public totalMultipliedStaked = 0;
 
-    mUMAMI public mumami;
 
     /// @notice
     /// @dev mapping (address => excessTokenRewards)
@@ -124,7 +122,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         string memory symbol
     ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
-        mumami = new mUMAMI(name, symbol);
         dateTime = IDateTime(_dateTime);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -311,7 +308,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         // Wrap the sUMAMI into wsUMAMI
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
-        mumami.mint(msg.sender, amount);
+        _mint(msg.sender, amount);
 
         uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
 
@@ -358,7 +355,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         multipliedBalance[msg.sender] = 0;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
-        mumami.burnFrom(msg.sender, info.amount);
+        _burn(msg.sender, info.amount);
 
         emit Withdraw(msg.sender, info.amount);
     }
