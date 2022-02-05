@@ -87,7 +87,14 @@ describe("MarinateV2", async function () {
     expect(info.multipliedAmount).to.equal(0);
   });
 
-  it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {
+  it("Stake and Withdraw - Locked funds", async function () {
+    let amount = 100000;
+    setTime(1646120314);
+    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await MarinateV2.connect(accounts[0]).stake(amount);
+    await fastForward(60 * 60 * 24);
+    await MockedMarinatedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await expect(MarinateV2.connect(accounts[0]).withdraw()).to.be.revertedWith("Too soon");
 
   });
 
