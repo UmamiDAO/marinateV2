@@ -8,6 +8,7 @@ describe("MarinateV2", async function () {
   let DateTime;
   let MockedUMAMI;
   let MarinateV2;
+  let MockedMarinatedUMAMI;
   let RewardToken, MockedNFT;
 
   async function printTokenBalance(token, address) {
@@ -43,6 +44,9 @@ describe("MarinateV2", async function () {
   beforeEach(async () => {
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
+    const _MockedMarinatedUMAMI = await ethers.getContractFactory("MockERC20");
+    const mUmamiAddress = await MarinateV2.mumami();
+    MockedMarinatedUMAMI = await _MockedMarinatedUMAMI.attach(mUmamiAddress);
 
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
@@ -50,16 +54,42 @@ describe("MarinateV2", async function () {
     await MockedUMAMI.transfer(accounts[0].address, ethers.utils.parseEther("10000"));
   });
 
-  it("does update appropriate storage variables", async function () {
+  it("Stake - storage variables", async function () {
     let amount = 100000;
     setTime(1646120114);
     await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
     await MarinateV2.connect(accounts[0]).stake(amount);
-    //const totalStaked = await MarinateV2.totalStaked();
     const totalStaked = await MarinateV2.stakedBalance(accounts[0].address);
+    const totalMultipliedStaked = await MarinateV2.multipliedBalance(accounts[0].address);
+    const info = await MarinateV2.marinatorInfo(accounts[0].address);
+    const mUmamiBalance = await MockedMarinatedUMAMI.balanceOf(accounts[0].address);
+    expect(totalStaked).to.equal(amount);
+    expect(mUmamiBalance).to.equal(amount);
+    expect(Math.round(totalMultipliedStaked / Math.pow(10, 40))).to.equal(amount);
+    expect(info.amount).to.equal(amount);
+    expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
   });
 
-  it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {});
+  it("Stake & Withdraw - storage variables", async function () {
+    let amount = 100000;
+    setTime(1646120214);
+    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await MarinateV2.connect(accounts[0]).stake(amount);
+
+    await MockedMarinatedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await MarinateV2.connect(accounts[0]).withdraw();
+    const totalStaked = await MarinateV2.stakedBalance(accounts[0].address);
+    const totalMultipliedStaked = await MarinateV2.multipliedBalance(accounts[0].address);
+    const info = await MarinateV2.marinatorInfo(accounts[0].address);
+    expect(totalStaked).to.equal(0);
+    expect(totalMultipliedStaked).to.equal(0);
+    expect(info.amount).to.equal(0);
+    expect(info.multipliedAmount).to.equal(0);
+  });
+
+  it("Stake - Stake and Withdraw - No Rebase & Rewards", async function () {
+
+  });
 
   it("Stake - Stake and Double Withdraw", async function () {});
 

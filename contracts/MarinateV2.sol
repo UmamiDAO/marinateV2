@@ -101,7 +101,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /*==== STRUCTS ====*/
 
     struct Marinator {
-        uint256 lastDepositTime; // TODO: nft -> We should enforce nft must stay  at least one month locked. Otherswise users will stake nft, stake UMAMI to get multiplier, unstake nft
+        uint256 lastDepositTime;
         uint256 amount;
         uint256 multipliedAmount;
     }
@@ -408,7 +408,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
                 multiplier += multipliers[multiplierTokens[i]];
             }
         }
-        multipliedAmount = (amount * multiplier) / SCALE;
+        multipliedAmount = amount * multiplier * SCALE;
     }
 
     /**
