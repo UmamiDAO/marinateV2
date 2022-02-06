@@ -37,10 +37,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     mapping(address => mapping(address => uint256)) public paidCumTokenRewardsPerStake;
 
     /// @notice
-    /// @dev mapping (address => totalCumTokenRewardsPerStake)
-    mapping(address => uint256) public stakedBalance;
-
-    /// @notice
     /// @dev mapping (address => nft multipliers)
     mapping(address => uint256) public multipliers;
 
@@ -188,10 +184,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
                 amount: toBalance,
                 multipliedAmount: multipliedToAmount
             });
-
-            // update staked balances
-            stakedBalance[from] = fromBalance;
-            stakedBalance[to] = toBalance;
         }
     }
 
@@ -310,7 +302,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
             multipliedAmount: info.multipliedAmount + multipliedAmount
         });
 
-        if (stakedBalance[msg.sender] == 0) {
+        if (info.amount == 0) {
             // New user - not eligible for any previous rewards on any token
             for (uint256 i = 0; i < rewardTokens.length; i++) {
                 address token = rewardTokens[i];
@@ -322,7 +314,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         totalStaked += amount;
         totalMultipliedStaked += multipliedAmount;
-        stakedBalance[msg.sender] += amount;
         emit Stake(msg.sender, amount, multipliedAmount);
     }
 
@@ -339,8 +330,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         Marinator memory info = marinatorInfo[msg.sender];
         delete marinatorInfo[msg.sender];
         totalMultipliedStaked -= info.multipliedAmount;
-        totalStaked -= stakedBalance[msg.sender];
-        stakedBalance[msg.sender] = 0;
+        totalStaked -= info.amount;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
         _burn(msg.sender, info.amount);

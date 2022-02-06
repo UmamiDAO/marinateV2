@@ -55,10 +55,8 @@ describe("MarinateV2", async function () {
     setTime(1646120114);
     await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
     await MarinateV2.connect(accounts[0]).stake(amount);
-    const totalStaked = await MarinateV2.stakedBalance(accounts[0].address);
     const info = await MarinateV2.marinatorInfo(accounts[0].address);
     const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
-    expect(totalStaked).to.equal(amount);
     expect(mUmamiBalance).to.equal(amount);
     expect(info.amount).to.equal(amount);
     expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
@@ -71,9 +69,9 @@ describe("MarinateV2", async function () {
     await MarinateV2.connect(accounts[0]).stake(amount);
 
     await MarinateV2.connect(accounts[0]).withdraw();
-    const totalStaked = await MarinateV2.stakedBalance(accounts[0].address);
     const info = await MarinateV2.marinatorInfo(accounts[0].address);
-    expect(totalStaked).to.equal(0);
+    const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
+    expect(mUmamiBalance).to.equal(0);
     expect(info.amount).to.equal(0);
     expect(info.multipliedAmount).to.equal(0);
   });
