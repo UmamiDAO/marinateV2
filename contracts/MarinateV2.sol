@@ -103,6 +103,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     event WithdrawMultiplier(address addr, address nft, uint256 tokenId);
     event RewardCollection(address token, address addr, uint256 amount);
     event RewardAdded(address token, uint256 amount, uint256 rps);
+    event RewardClaimed(address token, address staker, uint256 amount);
 
     /*==== CONSTRUCTOR ====*/
 
@@ -335,6 +336,14 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     }
 
     /**
+     * @notice claim rewards
+     */
+    function claimRewards() public nonReentrant {
+        _collectRewards();
+        _payRewards();
+    }
+
+    /**
      * @notice pay rewards to a marinator
      */
     function _payRewards() private {
@@ -342,6 +351,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
             address token = rewardTokens[i];
             uint256 amount = toBePaid[token][msg.sender];
             IERC20(token).safeTransfer(msg.sender, amount);
+            emit RewardClaimed(token, msg.sender, amount);
             delete toBePaid[token][msg.sender];
         }
     }
