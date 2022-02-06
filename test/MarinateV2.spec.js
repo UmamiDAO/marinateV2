@@ -45,14 +45,31 @@ describe("MarinateV2", async function () {
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
 
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
+    await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 2);
     MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
 
     await MockedUMAMI.transfer(accounts[0].address, ethers.utils.parseEther("10000"));
   });
 
+  it("Transfer - no multipliers", async function () {
+    let amount = 100000;
+    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await MarinateV2.connect(accounts[0]).stake(amount);
+    await MarinateV2.connect(accounts[0]).transfer(accounts[1].address, amount);
+    const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+    const mUmamiBalance1 = await MarinateV2.balanceOf(accounts[1].address);
+    const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+    const info1 = await MarinateV2.marinatorInfo(accounts[1].address);
+    expect(mUmamiBalance0).to.equal(0);
+    expect(mUmamiBalance1).to.equal(amount);
+    expect(info0.amount).to.equal(0);
+    expect(info1.amount).to.equal(amount);
+    expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+    expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
+  });
+
   it("Stake - storage variables", async function () {
     let amount = 100000;
-    setTime(1646120114);
     await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
     await MarinateV2.connect(accounts[0]).stake(amount);
     const info = await MarinateV2.marinatorInfo(accounts[0].address);
@@ -60,6 +77,12 @@ describe("MarinateV2", async function () {
     expect(mUmamiBalance).to.equal(amount);
     expect(info.amount).to.equal(amount);
     expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
+  });
+
+  it("Stake - invalid amount", async function () {
+    let amount = 0;
+    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+    await expect(MarinateV2.connect(accounts[0]).stake(amount)).to.be.revertedWith("Invalid stake amount");;
   });
 
   it("Stake & Withdraw - storage variables", async function () {
