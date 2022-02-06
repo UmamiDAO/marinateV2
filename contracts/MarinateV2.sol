@@ -41,10 +41,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     mapping(address => uint256) public stakedBalance;
 
     /// @notice
-    /// @dev mapping (address => multipliedBalance)
-    mapping(address => uint256) public multipliedBalance;
-
-    /// @notice
     /// @dev mapping (address => nft multipliers)
     mapping(address => uint256) public multipliers;
 
@@ -193,10 +189,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
                 multipliedAmount: multipliedToAmount
             });
 
-            // update multiplied balances
-            multipliedBalance[from] = multipliedFromAmount;
-            multipliedBalance[to] = multipliedToAmount;
-
             // update staked balances
             stakedBalance[from] = fromBalance;
             stakedBalance[to] = toBalance;
@@ -250,7 +242,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         });
 
         // update totals
-        multipliedBalance[msg.sender] = multipliedAmount;
         totalMultipliedStaked -= oldMultipliedAmount;
         totalMultipliedStaked += multipliedAmount;
 
@@ -290,7 +281,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         });
 
         // to handle the case of multiple staked nft's
-        multipliedBalance[msg.sender] = multipliedAmount;
         totalMultipliedStaked -= oldMultipliedAmount;
         totalMultipliedStaked += multipliedAmount;
 
@@ -333,7 +323,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         totalStaked += amount;
         totalMultipliedStaked += multipliedAmount;
         stakedBalance[msg.sender] += amount;
-        multipliedBalance[msg.sender] += multipliedAmount;
         emit Stake(msg.sender, amount, multipliedAmount);
     }
 
@@ -349,10 +338,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         Marinator memory info = marinatorInfo[msg.sender];
         delete marinatorInfo[msg.sender];
-        totalMultipliedStaked -= multipliedBalance[msg.sender];
+        totalMultipliedStaked -= info.multipliedAmount;
         totalStaked -= stakedBalance[msg.sender];
         stakedBalance[msg.sender] = 0;
-        multipliedBalance[msg.sender] = 0;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
         _burn(msg.sender, info.amount);
@@ -386,9 +374,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      * @param token the token to collect rewards for
      */
     function _collectRewardsForToken(address token) private {
-        require(multipliedBalance[msg.sender] > 0, "No stake for rewards");
+        Marinator memory info = marinatorInfo[msg.sender];
+        require(info.multipliedAmount > 0, "No stake for rewards");
         uint256 owedPerUnitStake = totalCumTokenRewardsPerStake[token] - paidCumTokenRewardsPerStake[token][msg.sender];
-        uint256 totalRewards = (multipliedBalance[msg.sender] * owedPerUnitStake) / SCALE;
+        uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
         paidCumTokenRewardsPerStake[token][msg.sender] = totalCumTokenRewardsPerStake[token];
         toBePaid[token][msg.sender] += totalRewards;
     }
@@ -415,8 +404,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      * @return totalRewards - the available rewards for that token and marinator
      */
     function getAvailableTokenRewards(address staker, address token) external view returns (uint256 totalRewards) {
+        Marinator memory info = marinatorInfo[staker];
         uint256 owedPerUnitStake = totalCumTokenRewardsPerStake[token] - paidCumTokenRewardsPerStake[token][staker];
-        uint256 pendingRewards = (multipliedBalance[staker] * owedPerUnitStake) / SCALE;
+        uint256 pendingRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
         totalRewards = pendingRewards + toBePaid[token][staker];
     }
 
