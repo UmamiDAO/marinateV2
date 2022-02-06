@@ -17,7 +17,6 @@ import { IDateTime } from "./interfaces/IDateTime.sol";
 contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     using SafeERC20 for IERC20;
 
-    uint32 constant DAY_IN_SECONDS = 86400;
     address public immutable UMAMI;
     IDateTime public dateTime;
     uint256 public totalStaked = 0;
@@ -213,7 +212,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      */
     function stakeMultiplier(address _NFT, uint256 tokenId) external {
         require(stakeEnabled, "Staking not enabled");
-        require(dateTime.getDay(block.timestamp) == 1, "Not 1st of month");
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(!multiplierStaked[msg.sender][_NFT], "NFT already staked");
 
@@ -254,7 +252,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         // check nft not locked
         Marinator memory info = marinatorInfo[msg.sender];
-        require(info.lastDepositTime + DAY_IN_SECONDS < block.timestamp, "NFT locked");
 
         // unstake nft
         IERC721(_NFT).safeTransferFrom(address(this), msg.sender, tokenId);
@@ -285,7 +282,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      */
     function stake(uint256 amount) external {
         require(stakeEnabled, "Staking not enabled");
-        require(dateTime.getDay(block.timestamp) == 1, "Not 1st of month");
         require(amount > 0, "Invalid stake amount");
 
         // Wrap the sUMAMI into wsUMAMI
