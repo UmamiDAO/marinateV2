@@ -21,7 +21,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     IDateTime public dateTime;
     uint256 public totalStaked = 0;
     uint256 public totalMultipliedStaked = 0;
-
+    uint256 public BASE = 10000;
 
     /// @notice
     /// @dev mapping (address => excessTokenRewards)
@@ -384,13 +384,13 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
     function _getMultipliedAmount(uint256 amount, address account) private returns (uint256 multipliedAmount) {
-        uint256 multiplier = 1;
+        uint256 multiplier = BASE;
         for (uint256 i = 0; i < multiplierTokens.length; i++) {
             if (multiplierStaked[account][multiplierTokens[i]]) {
                 multiplier += multipliers[multiplierTokens[i]];
             }
         }
-        multipliedAmount = amount * multiplier * SCALE;
+        multipliedAmount = amount * SCALE * multiplier / BASE;
     }
 
     /**
@@ -448,7 +448,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /**
      * @notice add an nft multiplier token
      * @param token the address of the token to add
-     * @param multiplier the multiplier amount for that nft collection
+     * @param multiplier the multiplier amount for that nft collection represented as a percentaage with base 10000 
+     * eg. a multiplier of 500 will be 5% 
      */
     function addApprovedMultiplierToken(address token, uint256 multiplier) external onlyAdmin {
         require(!isApprovedMultiplierToken[token], "Reward token exists");
