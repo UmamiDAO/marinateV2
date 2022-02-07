@@ -134,60 +134,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     }
 
     /**
-     * @dev Hook that is called after any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * has been transferred to `to`.
-     * - when `from` is zero, `amount` tokens have been minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        if (from == address(0) || to == address(0)) {
-            return;
-        } else {
-            uint256 fromBalance = balanceOf(from);
-            uint256 toBalance = balanceOf(to);
-            // update marinator info
-            Marinator memory marinatorFrom = marinatorInfo[from];
-            Marinator memory marinatorTo = marinatorInfo[to];
-
-            // get new multiplied amounts
-            uint256 multipliedFromAmount = _getMultipliedAmount(fromBalance, from);
-            uint256 multipliedToAmount = _getMultipliedAmount(toBalance, to);
-
-            // calculate total old multiplied amounts
-            uint256 oldMultipliedAmount = marinatorFrom.multipliedAmount + marinatorTo.multipliedAmount;
-            uint256 newMultipliedAmount = multipliedFromAmount + multipliedToAmount;
-
-            // calculate new total multiplied staked
-            totalMultipliedStaked -= oldMultipliedAmount;
-            totalMultipliedStaked += newMultipliedAmount;
-
-            // update marinator info
-            marinatorInfo[from] = Marinator({
-                lastDepositTime: marinatorFrom.lastDepositTime,
-                amount: fromBalance,
-                multipliedAmount: multipliedFromAmount
-            });
-            marinatorInfo[to] = Marinator({
-                lastDepositTime: marinatorTo.lastDepositTime,
-                amount: toBalance,
-                multipliedAmount: multipliedToAmount
-            });
-        }
-    }
-
-    /**
      * @notice adds a reward token amount
      * @param token the token address of the reward
      * @param amount the amount of the token
@@ -390,7 +336,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
                 multiplier += multipliers[multiplierTokens[i]];
             }
         }
-        multipliedAmount = amount * SCALE * multiplier / BASE;
+        multipliedAmount = (amount * SCALE * multiplier) / BASE;
     }
 
     /**
@@ -448,8 +394,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /**
      * @notice add an nft multiplier token
      * @param token the address of the token to add
-     * @param multiplier the multiplier amount for that nft collection represented as a percentaage with base 10000 
-     * eg. a multiplier of 500 will be 5% 
+     * @param multiplier the multiplier amount for that nft collection represented as a percentaage with base 10000
+     * eg. a multiplier of 500 will be 5%
      */
     function addApprovedMultiplierToken(address token, uint256 multiplier) external onlyAdmin {
         require(!isApprovedMultiplierToken[token], "Reward token exists");
@@ -470,6 +416,88 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
                 multiplierTokens.pop();
                 isApprovedMultiplierToken[token] = false;
             }
+        }
+    }
+
+    /*==== ERC20 OVERRIDES ====*/
+
+    /**
+     * @dev Hook that is called before any transfer of tokens. This includes
+     * minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * will be transferred to `to`.
+     * - when `from` is zero, `amount` tokens will be minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+     * - `from` and `to` are never both zero.
+     *
+     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        if (from == address(0) || to == address(0)) {
+            return;
+        } else {
+            _collectRewards();
+        }
+    }
+
+    /**
+     * @dev Hook that is called after any transfer of tokens. This includes
+     * minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * has been transferred to `to`.
+     * - when `from` is zero, `amount` tokens have been minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
+     * - `from` and `to` are never both zero.
+     *
+     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     */
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        if (from == address(0) || to == address(0)) {
+            return;
+        } else {
+            uint256 fromBalance = balanceOf(from);
+            uint256 toBalance = balanceOf(to);
+            // update marinator info
+            Marinator memory marinatorFrom = marinatorInfo[from];
+            Marinator memory marinatorTo = marinatorInfo[to];
+
+            // get new multiplied amounts
+            uint256 multipliedFromAmount = _getMultipliedAmount(fromBalance, from);
+            uint256 multipliedToAmount = _getMultipliedAmount(toBalance, to);
+
+            // calculate total old multiplied amounts
+            uint256 oldMultipliedAmount = marinatorFrom.multipliedAmount + marinatorTo.multipliedAmount;
+            uint256 newMultipliedAmount = multipliedFromAmount + multipliedToAmount;
+
+            // calculate new total multiplied staked
+            totalMultipliedStaked -= oldMultipliedAmount;
+            totalMultipliedStaked += newMultipliedAmount;
+
+            // update marinator info
+            marinatorInfo[from] = Marinator({
+                lastDepositTime: marinatorFrom.lastDepositTime,
+                amount: fromBalance,
+                multipliedAmount: multipliedFromAmount
+            });
+            marinatorInfo[to] = Marinator({
+                lastDepositTime: marinatorTo.lastDepositTime,
+                amount: toBalance,
+                multipliedAmount: multipliedToAmount
+            });
         }
     }
 

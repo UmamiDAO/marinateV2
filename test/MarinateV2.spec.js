@@ -25,14 +25,14 @@ describe("MarinateV2", async function () {
     await network.provider.send("evm_mine");
   }
 
-  async function setup(){
+  async function setup() {
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
     await MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
     await MockedUMAMI.transfer(accounts[0].address, ethers.utils.parseEther("10000"));
-  };
+  }
 
   before(async () => {
     // setup peripheral contracts
@@ -49,49 +49,48 @@ describe("MarinateV2", async function () {
     RewardToken = await _RewardToken.deploy("RWD", "RWD");
   });
   describe("#stake", async function () {
-  beforeEach(async () => {
-    await setup();
-  });
+    beforeEach(async () => {
+      await setup();
+    });
 
-  it("sets the storage variables", async function () {
-    let amount = 100000;
-    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
-    await MarinateV2.connect(accounts[0]).stake(amount);
-    const info = await MarinateV2.marinatorInfo(accounts[0].address);
-    const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
-    expect(mUmamiBalance).to.equal(amount);
-    expect(info.amount).to.equal(amount);
-    expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
-  });
+    it("sets the storage variables", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      const info = await MarinateV2.marinatorInfo(accounts[0].address);
+      const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
+      expect(mUmamiBalance).to.equal(amount);
+      expect(info.amount).to.equal(amount);
+      expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
+    });
 
-  it("sets the multiplied amount with nft staked", async function () {
-    await MockedNFT.mint(accounts[0].address, 0);
-    let amount = 100000;
-    await MockedNFT.connect(accounts[0]).approve(MarinateV2.address, 0);
-    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
-    await MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT.address, 0);
-    await MarinateV2.connect(accounts[0]).stake(amount);
-    const info = await MarinateV2.marinatorInfo(accounts[0].address);
-    const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
-    expect(mUmamiBalance).to.equal(amount);
-    expect(info.amount).to.equal(amount);
-    expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount * 1.02);
-  });
+    it("sets the multiplied amount with nft staked", async function () {
+      await MockedNFT.mint(accounts[0].address, 0);
+      let amount = 100000;
+      await MockedNFT.connect(accounts[0]).approve(MarinateV2.address, 0);
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT.address, 0);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      const info = await MarinateV2.marinatorInfo(accounts[0].address);
+      const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
+      expect(mUmamiBalance).to.equal(amount);
+      expect(info.amount).to.equal(amount);
+      expect(Math.round(info.multipliedAmount / Math.pow(10, 40))).to.equal(amount * 1.02);
+    });
 
-  it("reverts for invalid amount", async function () {
-    let amount = 0;
-    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
-    await expect(MarinateV2.connect(accounts[0]).stake(amount)).to.be.revertedWith("Invalid stake amount");
-  });
+    it("reverts for invalid amount", async function () {
+      let amount = 0;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await expect(MarinateV2.connect(accounts[0]).stake(amount)).to.be.revertedWith("Invalid stake amount");
+    });
 
-  it("revers when not enabled", async function () {
-    let amount = 100;
-    await MarinateV2.connect(owner).setStakeEnabled(false);
-    await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
-    await expect(MarinateV2.connect(accounts[0]).stake(amount)).to.be.revertedWith("Staking not enabled");
+    it("revers when not enabled", async function () {
+      let amount = 100;
+      await MarinateV2.connect(owner).setStakeEnabled(false);
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await expect(MarinateV2.connect(accounts[0]).stake(amount)).to.be.revertedWith("Staking not enabled");
+    });
   });
-
-});
   describe("#withdraw", async function () {
     beforeEach(async () => {
       await setup();
@@ -101,7 +100,7 @@ describe("MarinateV2", async function () {
       setTime(1646120214);
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-  
+
       await MarinateV2.connect(accounts[0]).withdraw();
       const info = await MarinateV2.marinatorInfo(accounts[0].address);
       const mUmamiBalance = await MarinateV2.balanceOf(accounts[0].address);
@@ -113,7 +112,7 @@ describe("MarinateV2", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-  
+
       await MarinateV2.connect(accounts[0]).withdraw();
       await expect(MarinateV2.connect(accounts[0]).withdraw()).to.be.revertedWith("No stake for rewards");
     });
@@ -149,7 +148,7 @@ describe("MarinateV2", async function () {
     });
   });
 
-/*
+  /*
   it("Rewards - 50/50 rewards - 1/3 multipliers", async function () {
     
     let amount = ethers.utils.parseUnits("1", 9);
