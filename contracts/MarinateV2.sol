@@ -1,6 +1,33 @@
 // SPDX-License-Identifier: GNU GPLv3
 pragma solidity ^0.8.0;
 
+/////////////////////////////////////////////////////////////////////////////
+//                                                                         //
+//                              #@@@@@@@@@@@@&,                            //
+//                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                     //
+//                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                 //
+//               @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@              //
+//             @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            //
+//           *@@@#    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//          *@@@%    &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//          @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
+//          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
+//                                                                         //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,        //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,        //
+//                                                                         //
+//          @@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@          //
+//            &@@@@@@@    #@@@@@@@.   ,@@@@@@@,   .@@@@@@@/    @@@@        //
+//                                                                         //
+//          @@@@@      @@@%    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
+//          @@@@@      @@@@    %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
+//          .@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//            @@@@@  &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//                (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(              //
+//                                                                         //
+//                                                                         //
+/////////////////////////////////////////////////////////////////////////////
+
 // contracts
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -27,31 +54,32 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /// @dev mapping (address => excessTokenRewards)
     mapping(address => uint256) public excessTokenRewards;
 
-    /// @notice
+    /// @notice total number of reward epochs
     /// @dev mapping (address => totalCumTokenRewardsPerStake)
     mapping(address => uint256) public totalCumTokenRewardsPerStake;
 
-    /// @notice
+    /// @notice number of reward epochs paid to marinator
     /// @dev mapping (address => ( address => paidCumTokenRewardsPerStake))
     mapping(address => mapping(address => uint256)) public paidCumTokenRewardsPerStake;
 
-    /// @notice
+    /// @notice the multiplier percentage of an nft
+    /// the multiplier amount for that nft collection represented as a percentaage with base 10000 -> 5% = 500
     /// @dev mapping (address => nft multipliers)
     mapping(address => uint256) public multipliers;
 
-    /// @notice
+    /// @notice if the user has a multiplier staked
     /// @dev mapping (address => ( address => multiplierStaked))
     mapping(address => mapping(address => bool)) public multiplierStaked;
 
-    /// @notice
+    /// @notice if the token is an approved reward token
     /// @dev mapping (address => isApprovedRewardToken)
     mapping(address => bool) public isApprovedRewardToken;
 
-    /// @notice
+    /// @notice if the token is an approved multiplier token
     /// @dev mapping (address => isApprovedMultiplierToken)
     mapping(address => bool) public isApprovedMultiplierToken;
 
-    /// @notice
+    /// @notice the marinator info for a marinator
     /// @dev mapping (address => Marinator)
     mapping(address => Marinator) public marinatorInfo;
 
@@ -59,16 +87,16 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /// @dev mapping (address => ( address => toBePaid))
     mapping(address => mapping(address => uint256)) public toBePaid;
 
-    /// @notice
+    /// @notice an array of reward tokens to issue rewards in
     /// @dev array rewardsTokens
     address[] public rewardTokens;
 
-    /// @notice
+    /// @notice an array of multiplier tokens to use for multiplying the reward
     /// @dev array multiplierTokens
     address[] public multiplierTokens;
 
-    /// @notice wat is dis
-    /// @dev
+    /// @notice scale used for calcs
+    /// @dev SCALE
     uint256 public SCALE = 1e40;
 
     /// @notice is staking enabled
@@ -76,15 +104,15 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     bool public stakeEnabled;
 
     /// @notice are wiuthdrawals enabled
-    /// @dev
+    /// @dev bool
     bool public withdrawEnabled;
 
     /// @notice allow early withdrawals from staking
-    /// @dev
+    /// @dev bool
     bool public allowEarlyWithdrawals;
 
     /// @notice the admin role hash
-    /// @dev
+    /// @dev hash
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /*==== STRUCTS ====*/
@@ -231,20 +259,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
 
-        // Wrap the sUMAMI into wsUMAMI
-        IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
-        _mint(msg.sender, amount);
-
-        uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
-
-        // Store the sender's info
         Marinator memory info = marinatorInfo[msg.sender];
-        marinatorInfo[msg.sender] = Marinator({
-            lastDepositTime: block.timestamp,
-            amount: info.amount + amount,
-            multipliedAmount: info.multipliedAmount + multipliedAmount
-        });
-
         if (info.amount == 0) {
             // New user - not eligible for any previous rewards on any token
             for (uint256 i = 0; i < rewardTokens.length; i++) {
@@ -254,6 +269,18 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         } else {
             _collectRewards();
         }
+
+        // Wrap the sUMAMI into wsUMAMI
+        IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
+        _mint(msg.sender, amount);
+
+        uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
+        // Store the sender's info
+        marinatorInfo[msg.sender] = Marinator({
+            lastDepositTime: block.timestamp,
+            amount: info.amount + amount,
+            multipliedAmount: info.multipliedAmount + multipliedAmount
+        });
 
         totalStaked += amount;
         totalMultipliedStaked += multipliedAmount;
