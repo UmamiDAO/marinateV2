@@ -200,10 +200,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         uint256 oldMultipliedAmount = info.multipliedAmount;
 
         // update marinator info
-        marinatorInfo[msg.sender] = Marinator({
-            amount: info.amount,
-            multipliedAmount: multipliedAmount
-        });
+        marinatorInfo[msg.sender] = Marinator({ amount: info.amount, multipliedAmount: multipliedAmount });
 
         // update totals
         totalMultipliedStaked -= oldMultipliedAmount;
@@ -237,10 +234,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         uint256 multipliedAmount = _getMultipliedAmount(baseAmount, msg.sender);
 
         // Update existing marinated amount
-        marinatorInfo[msg.sender] = Marinator({
-            amount: baseAmount,
-            multipliedAmount: multipliedAmount
-        });
+        marinatorInfo[msg.sender] = Marinator({ amount: baseAmount, multipliedAmount: multipliedAmount });
 
         // to handle the case of multiple staked nft's
         totalMultipliedStaked -= oldMultipliedAmount;
@@ -253,7 +247,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @notice stake UMAMI
      * @param amount the amount of umami to stake
      */
-    function stake(uint256 amount) external isEligibleSender{
+    function stake(uint256 amount) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
 
@@ -356,7 +350,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
     function _getMultipliedAmount(uint256 amount, address account) private returns (uint256 multipliedAmount) {
-        if (!isWhitelisted(account)){
+        if (!isWhitelisted(account)) {
             return 0;
         }
         uint256 multiplier = BASE;
@@ -472,10 +466,10 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         if (from == address(0) || to == address(0)) {
             return;
         } else {
-            if (isWhitelisted(from)){
+            if (isWhitelisted(from)) {
                 _collectRewards(from);
             }
-            if (isWhitelisted(to)){
+            if (isWhitelisted(to)) {
                 _collectRewards(to);
             }
         }
@@ -503,7 +497,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         if (from == address(0) || to == address(0)) {
             return;
         } else {
-            // only update the marinator multipliedAmount if they are whitlisted or not a contract 
+            // only update the marinator multipliedAmount if they are whitlisted or not a contract
             // update total multiplied staked if the transaction is from wallet to wallet or non whitlist to whitelist
             // total marinated amount should decrease when deposited into a contract that is not whitelisted
             // total marinated amout should increase when coming from a !whitelisted account
@@ -534,17 +528,11 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
                     // calculate new total multiplied staked
                     totalMultipliedStaked -= marinatorTo.multipliedAmount;
                     totalMultipliedStaked += multipliedToAmount;
-                }   
+                }
             }
             // update marinator info
-            marinatorInfo[from] = Marinator({
-                amount: fromBalance,
-                multipliedAmount: multipliedFromAmount
-            });
-            marinatorInfo[to] = Marinator({
-                amount: toBalance,
-                multipliedAmount: multipliedToAmount
-            });
+            marinatorInfo[from] = Marinator({ amount: fromBalance, multipliedAmount: multipliedFromAmount });
+            marinatorInfo[to] = Marinator({ amount: toBalance, multipliedAmount: multipliedToAmount });
         }
     }
 

@@ -14,19 +14,9 @@ abstract contract ContractWhitelist is Ownable {
     /// @dev add to the contract whitelist
     /// @param _contract the address of the contract to add to the contract whitelist
     /// @return whether the contract was successfully added to the whitelist
-    function addToContractWhitelist(address _contract)
-        external
-        onlyOwner
-        returns (bool)
-    {
-        require(
-            isContract(_contract),
-            "ContractWhitelist: Address must be a contract address"
-        );
-        require(
-            !whitelistedContracts[_contract],
-            "ContractWhitelist: Contract already whitelisted"
-        );
+    function addToContractWhitelist(address _contract) external onlyOwner returns (bool) {
+        require(isContract(_contract), "ContractWhitelist: Address must be a contract address");
+        require(!whitelistedContracts[_contract], "ContractWhitelist: Contract already whitelisted");
 
         whitelistedContracts[_contract] = true;
 
@@ -38,14 +28,8 @@ abstract contract ContractWhitelist is Ownable {
     /// @dev remove from  the contract whitelist
     /// @param _contract the address of the contract to remove from the contract whitelist
     /// @return whether the contract was successfully removed from the whitelist
-    function removeFromContractWhitelist(address _contract)
-        external
-        returns (bool)
-    {
-        require(
-            whitelistedContracts[_contract],
-            "ContractWhitelist: Contract not whitelisted"
-        );
+    function removeFromContractWhitelist(address _contract) external returns (bool) {
+        require(whitelistedContracts[_contract], "ContractWhitelist: Contract not whitelisted");
 
         whitelistedContracts[_contract] = false;
 
@@ -58,11 +42,7 @@ abstract contract ContractWhitelist is Ownable {
 
     // Modifier is eligible sender modifier
     modifier isEligibleSender() {
-        if (isContract(msg.sender))
-            require(
-                whitelistedContracts[msg.sender],
-                "ContractWhitelist: Contract must be whitelisted"
-            );
+        if (isContract(msg.sender)) require(whitelistedContracts[msg.sender], "ContractWhitelist: Contract must be whitelisted");
         _;
     }
 
@@ -70,8 +50,8 @@ abstract contract ContractWhitelist is Ownable {
 
     /// @dev is the reciever whitelisted
     /// @param addr the address to check
-    function isWhitelisted(address addr) public view returns (bool){
-        if (isContract(addr)){
+    function isWhitelisted(address addr) public view returns (bool) {
+        if (isContract(addr)) {
             return whitelistedContracts[addr];
         }
         return true;
