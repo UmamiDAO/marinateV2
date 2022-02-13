@@ -185,7 +185,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @param _NFT the address of the NFT contract
      * @param tokenId the tokenId of the nft to stake
      */
-    function stakeMultiplier(address _NFT, uint256 tokenId) external {
+    function stakeMultiplier(address _NFT, uint256 tokenId) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(!multiplierStaked[msg.sender][_NFT], "NFT already staked");
@@ -253,7 +253,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @notice stake UMAMI
      * @param amount the amount of umami to stake
      */
-    function stake(uint256 amount) external {
+    function stake(uint256 amount) external isEligibleSender{
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
 
