@@ -34,6 +34,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ContractWhitelist } from "./ContractWhitelist.sol";
 
 // interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -41,7 +42,7 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { IDateTime } from "./interfaces/IDateTime.sol";
 
-contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
+contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
     using SafeERC20 for IERC20;
 
     address public immutable UMAMI;
@@ -118,7 +119,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
     /*==== STRUCTS ====*/
 
     struct Marinator {
-        uint256 lastDepositTime;
         uint256 amount;
         uint256 multipliedAmount;
     }
@@ -158,7 +158,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         uint256 tokenId,
         bytes calldata data
     ) external override returns (bytes4) {
-        return MarinateV2.onERC721Received.selector;
+        return MarinateV2V2.onERC721Received.selector;
     }
 
     /**
@@ -201,7 +201,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         // update marinator info
         marinatorInfo[msg.sender] = Marinator({
-            lastDepositTime: info.lastDepositTime,
             amount: info.amount,
             multipliedAmount: multipliedAmount
         });
@@ -239,7 +238,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
 
         // Update existing marinated amount
         marinatorInfo[msg.sender] = Marinator({
-            lastDepositTime: info.lastDepositTime,
             amount: baseAmount,
             multipliedAmount: multipliedAmount
         });
@@ -277,7 +275,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
         // Store the sender's info
         marinatorInfo[msg.sender] = Marinator({
-            lastDepositTime: block.timestamp,
             amount: info.amount + amount,
             multipliedAmount: info.multipliedAmount + multipliedAmount
         });
@@ -359,6 +356,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
     function _getMultipliedAmount(uint256 amount, address account) private returns (uint256 multipliedAmount) {
+        if (!isWhitelisted(account)){
+            return 0;
+        }
         uint256 multiplier = BASE;
         for (uint256 i = 0; i < multiplierTokens.length; i++) {
             if (multiplierStaked[account][multiplierTokens[i]]) {
@@ -472,8 +472,12 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         if (from == address(0) || to == address(0)) {
             return;
         } else {
-            _collectRewards(from);
-            _collectRewards(to);
+            if (isWhitelisted(from)){
+                _collectRewards(from);
+            }
+            if (isWhitelisted(to)){
+                _collectRewards(to);
+            }
         }
     }
 
@@ -499,9 +503,12 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
         if (from == address(0) || to == address(0)) {
             return;
         } else {
+            // only update the marinator multipliedAmount if they are whitlisted or not a contract 
+            // update total multiplied staked if the transaction is from wallet to wallet or non whitlist to whitelist
+            // total marinated amount should decrease when deposited into a contract that is not whitelisted
+            // total marinated amout should increase when coming from a !whitelisted account
             uint256 fromBalance = balanceOf(from);
             uint256 toBalance = balanceOf(to);
-            // update marinator info
             Marinator memory marinatorFrom = marinatorInfo[from];
             Marinator memory marinatorTo = marinatorInfo[to];
 
@@ -513,18 +520,28 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20 {
             uint256 oldMultipliedAmount = marinatorFrom.multipliedAmount + marinatorTo.multipliedAmount;
             uint256 newMultipliedAmount = multipliedFromAmount + multipliedToAmount;
 
-            // calculate new total multiplied staked
-            totalMultipliedStaked -= oldMultipliedAmount;
-            totalMultipliedStaked += newMultipliedAmount;
-
+            if (isWhitelisted(from) && isWhitelisted(to)) {
+                // calculate new total multiplied staked
+                totalMultipliedStaked -= oldMultipliedAmount;
+                totalMultipliedStaked += newMultipliedAmount;
+            } else {
+                if (!isWhitelisted(to)) {
+                    // calculate new total multiplied staked
+                    totalMultipliedStaked -= marinatorFrom.multipliedAmount;
+                    totalMultipliedStaked += multipliedFromAmount;
+                }
+                if (!isWhitelisted(from)) {
+                    // calculate new total multiplied staked
+                    totalMultipliedStaked -= marinatorTo.multipliedAmount;
+                    totalMultipliedStaked += multipliedToAmount;
+                }   
+            }
             // update marinator info
             marinatorInfo[from] = Marinator({
-                lastDepositTime: marinatorFrom.lastDepositTime,
                 amount: fromBalance,
                 multipliedAmount: multipliedFromAmount
             });
             marinatorInfo[to] = Marinator({
-                lastDepositTime: marinatorTo.lastDepositTime,
                 amount: toBalance,
                 multipliedAmount: multipliedToAmount
             });

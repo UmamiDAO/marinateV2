@@ -25,7 +25,7 @@ describe("MarinateV2", async function () {
   }
 
   async function setup() {
-    const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
+    const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
