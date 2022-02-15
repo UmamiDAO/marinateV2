@@ -1,32 +1,32 @@
 // SPDX-License-Identifier: GNU GPLv3
 pragma solidity ^0.8.0;
 
-/////////////////////////////////////////////////////////////////////////////
-//                                                                         //
-//                              #@@@@@@@@@@@@&,                            //
-//                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                     //
-//                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                 //
-//               @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@              //
-//             @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            //
-//           *@@@#    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
-//          *@@@%    &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//          @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
-//          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
-//                                                                         //
-//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,        //
-//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,        //
-//                                                                         //
-//          @@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@          //
-//            &@@@@@@@    #@@@@@@@.   ,@@@@@@@,   .@@@@@@@/    @@@@        //
-//                                                                         //
-//          @@@@@      @@@%    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
-//          @@@@@      @@@@    %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        //
-//          .@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//            @@@@@  &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
-//                (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(              //
-//                                                                         //
-//                                                                         //
-/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//                                                                          //
+//                              #@@@@@@@@@@@@&,                             //
+//                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                      //
+//                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                  //
+//               @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@               //
+//             @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@             //
+//           *@@@#    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
+//          *@@@%    &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//          @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//                                                                          //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,         //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,         //
+//                                                                          //
+//          @@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@           //
+//            &@@@@@@@    #@@@@@@@.   ,@@@@@@@,   .@@@@@@@/    @@@@         //
+//                                                                          //
+//          @@@@@      @@@%    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//          @@@@@      @@@@    %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
+//          .@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//            @@@@@  &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
+//                (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(               //
+//                                                                          //
+//                                                                          //
+//////////////////////////////////////////////////////////////////////////////
 
 // contracts
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -284,11 +284,12 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     function withdraw() public nonReentrant {
         require(withdrawEnabled, "Withdraw not enabled");
         require(allowEarlyWithdrawals || dateTime.getDay(block.timestamp) == 1, "Too soon");
+        Marinator memory info = marinatorInfo[msg.sender];
+        require(info.multipliedAmount > 0, "No stake for rewards");
 
         _collectRewards(msg.sender);
         _payRewards();
 
-        Marinator memory info = marinatorInfo[msg.sender];
         delete marinatorInfo[msg.sender];
         totalMultipliedStaked -= info.multipliedAmount;
         totalStaked -= info.amount;
@@ -303,6 +304,8 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @notice claim rewards
      */
     function claimRewards() public nonReentrant {
+        Marinator memory info = marinatorInfo[msg.sender];
+        require(info.multipliedAmount > 0, "No stake for rewards");
         _collectRewards(msg.sender);
         _payRewards();
     }
@@ -336,12 +339,13 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @param user the amount of umami to stake
      */
     function _collectRewardsForToken(address token, address user) private {
-        Marinator memory info = marinatorInfo[msg.sender];
-        require(info.multipliedAmount > 0, "No stake for rewards");
-        uint256 owedPerUnitStake = totalCumTokenRewardsPerStake[token] - paidCumTokenRewardsPerStake[token][msg.sender];
-        uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
-        paidCumTokenRewardsPerStake[token][msg.sender] = totalCumTokenRewardsPerStake[token];
-        toBePaid[token][msg.sender] += totalRewards;
+        Marinator memory info = marinatorInfo[user];
+        if (info.multipliedAmount > 0){
+            uint256 owedPerUnitStake = totalCumTokenRewardsPerStake[token] - paidCumTokenRewardsPerStake[token][msg.sender];
+            uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
+            paidCumTokenRewardsPerStake[token][user] = totalCumTokenRewardsPerStake[token];
+            toBePaid[token][user] += totalRewards;
+        }
     }
 
     /**
