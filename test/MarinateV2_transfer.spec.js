@@ -121,7 +121,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
-    it("partial transfer with recipient small balance", async function () {
+    it("full transfer with recipient small balance", async function () {
     });
   });
   describe("#wallet to whitelisted", async function () {
@@ -146,7 +146,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
-    it("partial transfer with recipient small balance", async function () {
+    it("full transfer with recipient small balance", async function () {
     });
   });
   describe("#wallet to not whitelisted", async function () {
@@ -171,7 +171,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
-    it("partial transfer with recipient small balance", async function () {
+    it("full transfer with recipient small balance", async function () {
     });
   });
 
@@ -187,7 +187,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
-    it("partial transfer with recipient small balance", async function () {
+    it("full transfer with recipient small balance", async function () {
     });
   });
   describe("#whitelisted to wallet", async function () {
@@ -203,7 +203,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
-    it("partial transfer with recipient small balance", async function () {
+    it("full transfer with recipient small balance", async function () {
     });
 
   });
