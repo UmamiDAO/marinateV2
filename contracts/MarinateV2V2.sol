@@ -104,6 +104,10 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     /// @dev bool stakeEnabled
     bool public stakeEnabled;
 
+    /// @notice is nft staking enabled
+    /// @dev bool stakeEnabled
+    bool public multiplierStakingEnabled;
+
     /// @notice are wiuthdrawals enabled
     /// @dev bool
     bool public withdrawEnabled;
@@ -148,6 +152,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         rewardTokens.push(_UMAMI);
         isApprovedRewardToken[_UMAMI] = true;
         stakeEnabled = true;
+        multiplierStakingEnabled = true;
         withdrawEnabled = true;
         allowEarlyWithdrawals = false;
     }
@@ -186,7 +191,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @param tokenId the tokenId of the nft to stake
      */
     function stakeMultiplier(address _NFT, uint256 tokenId) external isEligibleSender {
-        require(stakeEnabled, "Staking not enabled");
+        require(multiplierStakingEnabled, "Staking not enabled");
         require(isApprovedMultiplierToken[_NFT], "Not approved NFT");
         require(!multiplierStaked[msg.sender][_NFT], "NFT already staked");
 
@@ -254,10 +259,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         Marinator memory info = marinatorInfo[msg.sender];
         if (info.amount == 0) {
             // New user - not eligible for any previous rewards on any token
-            for (uint256 i = 0; i < rewardTokens.length; i++) {
-                address token = rewardTokens[i];
-                paidCumTokenRewardsPerStake[token][msg.sender] = totalCumTokenRewardsPerStake[token];
-            }
+            _resetCumRewards(msg.sender);
         } else {
             _collectRewards(msg.sender);
         }
@@ -324,6 +326,17 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     }
 
     /**
+     * @notice reset rewards for user
+     * @param user the user to reset rewards paid for
+     */
+    function _resetCumRewards(address user) private {
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            address token = rewardTokens[i];
+            paidCumTokenRewardsPerStake[token][user] = totalCumTokenRewardsPerStake[token];
+        }
+    }
+
+    /**
      * @notice collect rewards from a marinator
      * @param user the amount of umami to stake
      */
@@ -340,7 +353,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      */
     function _collectRewardsForToken(address token, address user) private {
         Marinator memory info = marinatorInfo[user];
-        if (info.multipliedAmount > 0){
+        if (info.multipliedAmount > 0) {
             uint256 owedPerUnitStake = totalCumTokenRewardsPerStake[token] - paidCumTokenRewardsPerStake[token][msg.sender];
             uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
             paidCumTokenRewardsPerStake[token][user] = totalCumTokenRewardsPerStake[token];
@@ -470,6 +483,10 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         if (from == address(0) || to == address(0)) {
             return;
         } else {
+            Marinator memory info = marinatorInfo[to];
+            if (info.amount == 0) {
+                _resetCumRewards(to);
+            }
             if (isWhitelisted(from)) {
                 _collectRewards(from);
             }
@@ -556,6 +573,14 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      */
     function setStakeEnabled(bool enabled) external onlyAdmin {
         stakeEnabled = enabled;
+    }
+
+    /**
+     * @notice set multiplier staking enabled
+     * @param enabled enabled
+     */
+    function setMultiplierStakeEnabled(bool enabled) external onlyAdmin {
+        multiplierStakingEnabled = enabled;
     }
 
     /**
