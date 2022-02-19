@@ -140,11 +140,11 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     }
 
     function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external override returns (bytes4) {
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override returns (bytes4) {
         return MarinateV2V2.onERC721Received.selector;
     }
 
@@ -341,7 +341,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @param amount the unmultiplied amount
      * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
      */
-    function _getMultipliedAmount(uint256 amount, address account) private returns (uint256 multipliedAmount) {
+    function _getMultipliedAmount(uint256 amount, address account) private view returns (uint256 multipliedAmount) {
         if (!isWhitelisted(account)) {
             return 0;
         }
@@ -451,7 +451,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 amount
+        uint256
     ) internal virtual override {
         if (from == address(0) || to == address(0)) {
             return;
@@ -484,7 +484,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     function _afterTokenTransfer(
         address from,
         address to,
-        uint256 amount
+        uint256
     ) internal virtual override {
         if (from == address(0) || to == address(0)) {
             return;
