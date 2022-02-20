@@ -262,7 +262,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         require(withdrawEnabled, "Withdraw not enabled");
         require(allowEarlyWithdrawals || dateTime.getDay(block.timestamp) == 1, "Too soon");
         Marinator memory info = marinatorInfo[msg.sender];
-        require(info.amount > 0, "No staked balance");
+        require(info.multipliedAmount > 0, "No staked balance");
 
         _collectRewards(msg.sender);
         _payRewards();
