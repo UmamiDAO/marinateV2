@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 // contracts
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { MarinateV2V2 } from "../MarinateV2V2.sol";
 
 // interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -23,4 +24,9 @@ contract MockDepositContract {
     function withdraw(uint256 amount) external {
         IERC20(mUMAMI).safeTransfer(msg.sender, amount);
     }
+
+    function claimMarinateRewards() external {
+        MarinateV2V2(mUMAMI).claimRewards();
+    }
+
 }

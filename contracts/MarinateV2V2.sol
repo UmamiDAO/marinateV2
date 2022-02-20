@@ -155,6 +155,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      */
     function addReward(address token, uint256 amount) external nonReentrant {
         require(isApprovedRewardToken[token], "Token is not approved for rewards");
+        //require(totalMultipliedStaked > 0, "Total multiplied staked equal to zero"); @todo need to update tests for this
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         if (totalStaked == 0) {
             // Rewards which nobody is eligible for
@@ -265,7 +266,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         require(info.multipliedAmount > 0, "No staked balance");
 
         _collectRewards(msg.sender);
-        _payRewards();
+        _payRewards(msg.sender);
 
         delete marinatorInfo[msg.sender];
         totalMultipliedStaked -= info.multipliedAmount;
@@ -281,22 +282,20 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @notice claim rewards
      */
     function claimRewards() public nonReentrant {
-        Marinator memory info = marinatorInfo[msg.sender];
-        require(info.amount > 0, "No staked balance");
         _collectRewards(msg.sender);
-        _payRewards();
+        _payRewards(msg.sender);
     }
 
     /**
      * @notice pay rewards to a marinator
      */
-    function _payRewards() private {
+    function _payRewards(address user) private {
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             address token = rewardTokens[i];
-            uint256 amount = toBePaid[token][msg.sender];
-            IERC20(token).safeTransfer(msg.sender, amount);
-            emit RewardClaimed(token, msg.sender, amount);
-            delete toBePaid[token][msg.sender];
+            uint256 amount = toBePaid[token][user];
+            IERC20(token).safeTransfer(user, amount);
+            emit RewardClaimed(token, user, amount);
+            delete toBePaid[token][user];
         }
     }
 
@@ -329,7 +328,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     function _collectRewardsForToken(address token, address user) private {
         Marinator memory info = marinatorInfo[user];
         if (info.multipliedAmount > 0) {
-            uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][msg.sender];
+            uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][user];
             uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
             paidTokenRewardsPerStake[token][user] = totalTokenRewardsPerStake[token];
             toBePaid[token][user] += totalRewards;

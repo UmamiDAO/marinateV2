@@ -26,6 +26,10 @@ describe("MarinateV2 - transfer", async function () {
   }
 
   async function setup() {
+    // reward token
+    const _RewardToken = await ethers.getContractFactory("MockERC20");
+    RewardToken = await _RewardToken.deploy("RWD", "RWD");
+
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
     const _DepositContract = await ethers.getContractFactory("MockDepositContract");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
@@ -49,9 +53,7 @@ describe("MarinateV2 - transfer", async function () {
     MockedNFT = await _MockedNFT.deploy("UMAMI-NFT-2%", "UMAMI-NFT");
     MockedNFT2 = await _MockedNFT.deploy("UMAMI-NFT-10%", "UMAMI-NFT");
 
-    // reward token
-    const _RewardToken = await ethers.getContractFactory("MockERC20");
-    RewardToken = await _RewardToken.deploy("RWD", "RWD");
+    
   });
 
   describe("#wallet to wallet", async function () {
@@ -116,12 +118,149 @@ describe("MarinateV2 - transfer", async function () {
       expect(rewardBalance).to.equal(100000);
     });
     it("partial transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(accounts[1].address, partial);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await MarinateV2.connect(accounts[1]).claimRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(accounts[1].address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(accounts[1].address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(accounts[1].address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(amount - partial);
+      expect(mUmamiBalance1).to.equal(partial);
+      expect(info0.amount).to.equal(50000);
+      expect(info1.amount).to.equal(50000);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(50000);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(50000);
     });
     it("partial transfer with recipient small balance", async function () {
+      let partial = 50000;
+      let small = 25000
+      await MockedUMAMI.connect(accounts[0]).transfer(accounts[1].address, partial);
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, partial);
+      await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[0]).stake(partial);
+      await MarinateV2.connect(accounts[1]).stake(partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(accounts[1].address, small);
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await MarinateV2.connect(accounts[1]).claimRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(accounts[1].address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(accounts[1].address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(accounts[1].address);
+
+      expect(rewardBalance0).to.equal(partial);
+      expect(rewardBalance1).to.equal(partial);
+
+      expect(mUmamiBalance0).to.equal(small);
+      expect(mUmamiBalance1).to.equal(partial + small);
+      expect(info0.amount).to.equal(small);
+      expect(info1.amount).to.equal(partial + small);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(small);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(partial + small);
+    });
+    it("full transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(accounts[1].address, amount);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[1]).claimRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(accounts[1].address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(accounts[1].address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(accounts[1].address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(amount);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
     });
     it("full transfer with recipient small balance", async function () {
-    });
-    it("full transfer with recipient small balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).transfer(accounts[1].address, partial);
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, partial);
+      await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[0]).stake(partial);
+      await MarinateV2.connect(accounts[1]).stake(partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(accounts[1].address, partial);
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await MarinateV2.connect(accounts[1]).claimRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await MarinateV2.connect(accounts[1]).claimRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(accounts[1].address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(accounts[1].address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(accounts[1].address);
+
+      expect(rewardBalance0).to.equal(partial);
+      expect(rewardBalance1).to.equal(partial + amount);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
     });
   });
   describe("#wallet to whitelisted", async function () {
@@ -141,12 +280,148 @@ describe("MarinateV2 - transfer", async function () {
       expect(stakedBalance).to.equal(amount);
     });
     it("partial transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+      
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await WhitelistedDepositContract.connect(accounts[0]).claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(WhitelistedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(WhitelistedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(WhitelistedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(amount - partial);
+      expect(mUmamiBalance1).to.equal(partial);
+      expect(info0.amount).to.equal(50000);
+      expect(info1.amount).to.equal(50000);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(50000);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(50000);
     });
     it("partial transfer with recipient small balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      let small = 25000
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, small);
+      
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await WhitelistedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(WhitelistedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(WhitelistedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(WhitelistedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(partial);
+      expect(rewardBalance1).to.equal(partial);
+
+      expect(mUmamiBalance0).to.equal(small);
+      expect(mUmamiBalance1).to.equal(partial + small);
+      expect(info0.amount).to.equal(small);
+      expect(info1.amount).to.equal(partial + small);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(small);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(partial + small);
+    });
+    it("full transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, amount);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await WhitelistedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(WhitelistedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(WhitelistedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(WhitelistedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(amount);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
     });
     it("full transfer with recipient small balance", async function () {
-    });
-    it("full transfer with recipient small balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await WhitelistedDepositContract.claimMarinateRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await WhitelistedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(WhitelistedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(WhitelistedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(WhitelistedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(partial);
+      expect(rewardBalance1).to.equal(partial + amount);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
     });
   });
   describe("#wallet to not whitelisted", async function () {
@@ -166,12 +441,149 @@ describe("MarinateV2 - transfer", async function () {
       expect(stakedBalance).to.equal(amount);
     });
     it("partial transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+      
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await BlockedDepositContract.connect(accounts[0]).claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(BlockedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(BlockedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(BlockedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(amount - partial);
+      expect(mUmamiBalance1).to.equal(partial);
+      expect(info0.amount).to.equal(50000);
+      expect(info1.amount).to.equal(50000);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(50000);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(0);
     });
     it("partial transfer with recipient small balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      let small = 25000
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, small);
+      
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await BlockedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(BlockedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(BlockedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(BlockedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(small);
+      expect(mUmamiBalance1).to.equal(partial + small);
+      expect(info0.amount).to.equal(small);
+      expect(info1.amount).to.equal(partial + small);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(small);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+    });
+    it("full transfer with recipient 0 balance", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, amount);
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      //await expect(MarinateV2.connect(owner).addReward(RewardToken.address, "100000")).to.be.revertedWith("Total multiplied staked equal to zero");
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await BlockedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(BlockedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(BlockedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(BlockedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(0);
     });
     it("full transfer with recipient small balance", async function () {
-    });
-    it("full transfer with recipient small balance", async function () {
+      let amount = 100000;
+      let partial = 50000;
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
+      
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await BlockedDepositContract.claimMarinateRewards();
+
+      await RewardToken.mint(owner.address, "100000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
+      //await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      await BlockedDepositContract.claimMarinateRewards();
+
+      const rewardBalance0 = await RewardToken.balanceOf(accounts[0].address);
+      const rewardBalance1 = await RewardToken.balanceOf(BlockedDepositContract.address);
+      const mUmamiBalance0 = await MarinateV2.balanceOf(accounts[0].address);
+      const mUmamiBalance1 = await MarinateV2.balanceOf(BlockedDepositContract.address);
+      const info0 = await MarinateV2.marinatorInfo(accounts[0].address);
+      const info1 = await MarinateV2.marinatorInfo(BlockedDepositContract.address);
+
+      expect(rewardBalance0).to.equal(amount);
+      expect(rewardBalance1).to.equal(0);
+
+      expect(mUmamiBalance0).to.equal(0);
+      expect(mUmamiBalance1).to.equal(amount);
+      expect(info0.amount).to.equal(0);
+      expect(info1.amount).to.equal(amount);
+      expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+      expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(0);
     });
   });
 
@@ -185,7 +597,7 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("partial transfer with recipient small balance", async function () {
     });
-    it("full transfer with recipient small balance", async function () {
+    it("full transfer with recipient 0 balance", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
@@ -196,12 +608,11 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("sets variables", async function () {
     });
-
     it("partial transfer with recipient 0 balance", async function () {
     });
     it("partial transfer with recipient small balance", async function () {
     });
-    it("full transfer with recipient small balance", async function () {
+    it("full transfer with recipient 0 balance", async function () {
     });
     it("full transfer with recipient small balance", async function () {
     });
