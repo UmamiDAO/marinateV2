@@ -128,7 +128,7 @@ describe("MarinateV2", async function () {
       await MarinateV2.connect(accounts[0]).stake(amount);
 
       await MarinateV2.connect(accounts[0]).withdraw();
-      await expect(MarinateV2.connect(accounts[0]).withdraw()).to.be.revertedWith("No stake for rewards");
+      await expect(MarinateV2.connect(accounts[0]).withdraw()).to.be.revertedWith("No staked balance");
     });
 
     it("collects and pays the rewards when a user has pending rewards", async function () {
@@ -140,8 +140,8 @@ describe("MarinateV2", async function () {
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
       await MarinateV2.connect(accounts[0]).withdraw();
       const usrRewardBalance = await RewardToken.balanceOf(accounts[0].address);
-      const paidRewards = await MarinateV2.paidCumTokenRewardsPerStake(RewardToken.address, accounts[0].address);
-      const totalRewards = await MarinateV2.totalCumTokenRewardsPerStake(RewardToken.address);
+      const paidRewards = await MarinateV2.paidTokenRewardsPerStake(RewardToken.address, accounts[0].address);
+      const totalRewards = await MarinateV2.totalTokenRewardsPerStake(RewardToken.address);
       expect(paidRewards).to.equal(totalRewards);
       expect(usrRewardBalance).to.equal(100000);
     });
@@ -184,7 +184,7 @@ describe("MarinateV2", async function () {
       let amount = 100000;
       setTime(1735724890);
       await expect(MarinateV2.connect(accounts[0]).withdrawMultiplier(MockedNFT2.address, 4)).to.be.revertedWith(
-        "Not approved NFT",
+        "Unapproved NFT",
       );
     });
 
@@ -252,7 +252,7 @@ describe("MarinateV2", async function () {
       await MockedNFT2.mint(accounts[0].address, 4);
       await MockedNFT2.connect(accounts[0]).approve(MarinateV2.address, "4");
       await expect(MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT2.address, "4")).to.be.revertedWith(
-        "Not approved NFT",
+        "Unapproved NFT",
       );
     });
 
@@ -330,7 +330,7 @@ describe("MarinateV2", async function () {
 
       await MarinateV2.connect(owner).addReward(MockedERC20.address, one);
 
-      const totalRewardsPerStake = await MarinateV2.totalCumTokenRewardsPerStake(MockedERC20.address);
+      const totalRewardsPerStake = await MarinateV2.totalTokenRewardsPerStake(MockedERC20.address);
       expect(totalRewardsPerStake).to.equal(10000000000000);
     });
 
@@ -342,7 +342,7 @@ describe("MarinateV2", async function () {
 
       await MarinateV2.connect(owner).addReward(MockedERC20.address, one);
 
-      const totalRewardsPerStake = await MarinateV2.totalCumTokenRewardsPerStake(MockedERC20.address);
+      const totalRewardsPerStake = await MarinateV2.totalTokenRewardsPerStake(MockedERC20.address);
       const excessRewardsPerStake = await MarinateV2.excessTokenRewards(MockedERC20.address);
       expect(totalRewardsPerStake).to.equal(0);
       expect(excessRewardsPerStake).to.equal(one);

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ContractWhitelist
-/// @notice A helper contract that lets you add a list of whitelisted contracts that should be able to interact with restricited functions
+/// @notice A helper contract that lets you add a list of whitelisted contracts that should be able to interact with restricted functions
 abstract contract ContractWhitelist is Ownable {
     /// @dev contract => whitelisted or not
     mapping(address => bool) public whitelistedContracts;
@@ -42,7 +42,7 @@ abstract contract ContractWhitelist is Ownable {
 
     // Modifier is eligible sender modifier
     modifier isEligibleSender() {
-        if (isContract(msg.sender)) require(whitelistedContracts[msg.sender], "ContractWhitelist: Contract must be whitelisted");
+        require(isWhitelisted(msg.sender), "ContractWhitelist: Contract must be whitelisted");
         _;
     }
 
