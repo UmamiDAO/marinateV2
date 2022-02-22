@@ -1,32 +1,32 @@
 // SPDX-License-Identifier: GNU GPLv3
 pragma solidity ^0.8.0;
 
-//////////////////////////////////////////////////////////////////////////////
-//                                                                          //
-//                              #@@@@@@@@@@@@&,                             //
-//                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                      //
-//                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                  //
-//               @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@               //
-//             @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@             //
-//           *@@@#    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
-//          *@@@%    &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
-//          @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//                                                                          //
-//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,         //
-//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,         //
-//                                                                          //
-//          @@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@           //
-//            &@@@@@@@    #@@@@@@@.   ,@@@@@@@,   .@@@@@@@/    @@@@         //
-//                                                                          //
-//          @@@@@      @@@%    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//          @@@@@      @@@@    %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         //
-//          .@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
-//            @@@@@  &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
-//                (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(               //
-//                                                                          //
-//                                                                          //
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//                              #@@@@@@@@@@@@&,                              //
+//                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                       //
+//                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                   //
+//               @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                //
+//             @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@              //
+//           *@@@#    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            //
+//          *@@@%    &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
+//          @@@@     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//          @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//                                                                           //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,          //
+//          (@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@,          //
+//                                                                           //
+//          @@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@   @@@@@@@@@            //
+//            &@@@@@@@    #@@@@@@@.   ,@@@@@@@,   .@@@@@@@/    @@@@          //
+//                                                                           //
+//          @@@@@      @@@%    *@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//          @@@@@      @@@@    %@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@          //
+//          .@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@           //
+//            @@@@@  &@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            //
+//                (&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&(                //
+//                                                                           //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
 
 // contracts
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -96,8 +96,8 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     /// @notice are withdrawals enabled
     bool public withdrawEnabled;
 
-    /// @notice allow early withdrawals from staking
-    bool public allowEarlyWithdrawals;
+    /// @notice allow early withdrawals from staking multiplier
+    bool public multiplierWithdrawEnabled;
 
     /// @notice the admin role hash
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -135,8 +135,8 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         isApprovedRewardToken[_UMAMI] = true;
         stakeEnabled = true;
         multiplierStakingEnabled = true;
-        withdrawEnabled = true;
-        allowEarlyWithdrawals = false;
+        withdrawEnabled = false;
+        multiplierWithdrawEnabled = false;
     }
 
     function onERC721Received(
@@ -155,7 +155,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      */
     function addReward(address token, uint256 amount) external nonReentrant {
         require(isApprovedRewardToken[token], "Token is not approved for rewards");
-        //require(totalMultipliedStaked > 0, "Total multiplied staked equal to zero"); @todo need to update tests for this
+        require(totalMultipliedStaked > 0, "Total multiplied staked equal to zero");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         if (totalStaked == 0) {
             // Rewards which nobody is eligible for
@@ -203,8 +203,7 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @param tokenId the tokenId of the nft to stake
      */
     function withdrawMultiplier(address nft, uint256 tokenId) external {
-        require(withdrawEnabled, "Withdraw not enabled");
-        require(dateTime.getDay(block.timestamp) == 1, "Not 1st of month");
+        require(multiplierWithdrawEnabled, "Withdraw not enabled");
         require(isApprovedMultiplierNFT[nft], "Unapproved NFT");
         require(isNFTStaked[msg.sender][nft], "NFT not staked");
 
@@ -261,7 +260,6 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      */
     function withdraw() public nonReentrant {
         require(withdrawEnabled, "Withdraw not enabled");
-        require(allowEarlyWithdrawals || dateTime.getDay(block.timestamp) == 1, "Too soon");
         Marinator memory info = marinatorInfo[msg.sender];
         require(info.multipliedAmount > 0, "No staked balance");
 
@@ -488,10 +486,6 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         if (from == address(0) || to == address(0)) {
             return;
         } else {
-            // only update the marinator multipliedAmount if they are whitlisted or not a contract
-            // update total multiplied staked if the transaction is from wallet to wallet or non whitelist to whitelist
-            // total marinated amount should decrease when deposited into a contract that is not whitelisted
-            // total marinated amout should increase when coming from a !whitelisted account
             uint256 fromBalance = balanceOf(from);
             uint256 toBalance = balanceOf(to);
             Marinator memory marinatorFrom = marinatorInfo[from];
@@ -555,16 +549,16 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
      * @notice set withdrawal enabled
      * @param enabled enabled
      */
-    function setWithdrawEnabled(bool enabled) external onlyAdmin {
+    function setStakingWithdrawEnabled(bool enabled) external onlyAdmin {
         withdrawEnabled = enabled;
     }
 
     /**
-     * @notice set allow early withdrawals
+     * @notice set multiplier withdrawal enabled
      * @param enabled enabled
      */
-    function setAllowEarlyWithdrawals(bool enabled) external onlyAdmin {
-        allowEarlyWithdrawals = enabled;
+    function setMultiplierWithdrawEnabled(bool enabled) external onlyAdmin {
+        multiplierWithdrawEnabled = enabled;
     }
 
     /*==== ADMIN ====*/
