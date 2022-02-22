@@ -28,5 +28,4 @@ contract MockDepositContract {
     function claimMarinateRewards() external {
         MarinateV2V2(mUMAMI).claimRewards();
     }
-
 }

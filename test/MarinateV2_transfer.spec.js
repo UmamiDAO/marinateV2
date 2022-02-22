@@ -49,8 +49,6 @@ describe("MarinateV2 - transfer", async function () {
     const _MockedNFT = await ethers.getContractFactory("MockERC721");
     MockedNFT = await _MockedNFT.deploy("UMAMI-NFT-2%", "UMAMI-NFT");
     MockedNFT2 = await _MockedNFT.deploy("UMAMI-NFT-10%", "UMAMI-NFT");
-
-    
   });
 
   describe("#wallet to wallet", async function () {
@@ -119,7 +117,7 @@ describe("MarinateV2 - transfer", async function () {
       let partial = 50000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -148,14 +146,14 @@ describe("MarinateV2 - transfer", async function () {
     });
     it("partial transfer with recipient small balance", async function () {
       let partial = 50000;
-      let small = 25000
+      let small = 25000;
       await MockedUMAMI.connect(accounts[0]).transfer(accounts[1].address, partial);
 
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, partial);
       await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
       await MarinateV2.connect(accounts[0]).stake(partial);
       await MarinateV2.connect(accounts[1]).stake(partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -185,7 +183,7 @@ describe("MarinateV2 - transfer", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -226,7 +224,7 @@ describe("MarinateV2 - transfer", async function () {
       await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
       await MarinateV2.connect(accounts[0]).stake(partial);
       await MarinateV2.connect(accounts[1]).stake(partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -281,11 +279,11 @@ describe("MarinateV2 - transfer", async function () {
       let partial = 50000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
-      
+
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
 
       await MarinateV2.connect(accounts[0]).claimRewards();
@@ -311,19 +309,19 @@ describe("MarinateV2 - transfer", async function () {
     it("partial transfer with recipient small balance", async function () {
       let amount = 100000;
       let partial = 50000;
-      let small = 25000
+      let small = 25000;
 
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
 
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
 
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, small);
-      
+
       await MarinateV2.connect(accounts[0]).claimRewards();
       await WhitelistedDepositContract.claimMarinateRewards();
 
@@ -348,7 +346,7 @@ describe("MarinateV2 - transfer", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -387,7 +385,7 @@ describe("MarinateV2 - transfer", async function () {
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -442,11 +440,11 @@ describe("MarinateV2 - transfer", async function () {
       let partial = 50000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
-      
+
       await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
 
       await MarinateV2.connect(accounts[0]).claimRewards();
@@ -472,19 +470,19 @@ describe("MarinateV2 - transfer", async function () {
     it("partial transfer with recipient small balance", async function () {
       let amount = 100000;
       let partial = 50000;
-      let small = 25000
+      let small = 25000;
 
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
 
       await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
 
       await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, small);
-      
+
       await MarinateV2.connect(accounts[0]).claimRewards();
       await BlockedDepositContract.claimMarinateRewards();
 
@@ -509,7 +507,7 @@ describe("MarinateV2 - transfer", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -549,7 +547,7 @@ describe("MarinateV2 - transfer", async function () {
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
       await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -594,7 +592,7 @@ describe("MarinateV2 - transfer", async function () {
       await MarinateV2.connect(accounts[0]).stake(amount);
       await MarinateV2.connect(accounts[0]).approve(BlockedDepositContract.address, amount);
       await BlockedDepositContract.connect(accounts[0]).deposit(amount);
-      
+
       let multipliedBalance = await MarinateV2.totalMultipliedStaked();
       const stakedBalance = await MarinateV2.totalStaked();
       expect(multipliedBalance).to.equal(0);
@@ -610,7 +608,7 @@ describe("MarinateV2 - transfer", async function () {
       let partial = 50000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, amount);
 
       await BlockedDepositContract.connect(accounts[0]).withdraw(partial);
@@ -643,7 +641,7 @@ describe("MarinateV2 - transfer", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -689,7 +687,7 @@ describe("MarinateV2 - transfer", async function () {
       await MarinateV2.connect(accounts[0]).stake(amount);
       await MarinateV2.connect(accounts[0]).approve(WhitelistedDepositContract.address, amount);
       await WhitelistedDepositContract.connect(accounts[0]).deposit(amount);
-      
+
       let multipliedBalance = await MarinateV2.totalMultipliedStaked();
       const stakedBalance = await MarinateV2.totalStaked();
       expect(Math.round(multipliedBalance / Math.pow(10, 40))).to.equal(amount);
@@ -703,19 +701,19 @@ describe("MarinateV2 - transfer", async function () {
     it("partial transfer with recipient 0 balance", async function () {
       let amount = 100000;
       let partial = 50000;
-      let small = 25000
+      let small = 25000;
 
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
 
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
 
       await WhitelistedDepositContract.connect(accounts[0]).withdraw(small);
-      
+
       await MarinateV2.connect(accounts[0]).claimRewards();
       await WhitelistedDepositContract.claimMarinateRewards();
 
@@ -745,7 +743,7 @@ describe("MarinateV2 - transfer", async function () {
       await MarinateV2.connect(accounts[0]).stake(amount);
 
       await MarinateV2.connect(accounts[0]).transfer(WhitelistedDepositContract.address, partial);
-      
+
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
@@ -755,7 +753,7 @@ describe("MarinateV2 - transfer", async function () {
       await RewardToken.mint(owner.address, "100000");
       await RewardToken.connect(owner).approve(MarinateV2.address, "100000");
       await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
-      
+
       await MarinateV2.connect(accounts[0]).claimRewards();
       await WhitelistedDepositContract.claimMarinateRewards();
 

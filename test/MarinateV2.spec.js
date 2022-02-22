@@ -334,13 +334,14 @@ describe("MarinateV2", async function () {
     });
 
     it("updates the storage variables for the reward added with no stake", async function () {
-
       let one = ethers.utils.parseEther("1");
       await MarinateV2.addApprovedRewardToken(MockedERC20.address);
       await MockedERC20.mint(owner.address, one);
       await MockedERC20.connect(owner).approve(MarinateV2.address, one);
 
-      await expect(MarinateV2.connect(owner).addReward(MockedERC20.address, one)).to.be.revertedWith("Total multiplied staked equal to zero");
+      await expect(MarinateV2.connect(owner).addReward(MockedERC20.address, one)).to.be.revertedWith(
+        "Total multiplied staked equal to zero",
+      );
 
       const totalRewardsPerStake = await MarinateV2.totalTokenRewardsPerStake(MockedERC20.address);
       const excessRewardsPerStake = await MarinateV2.excessTokenRewards(MockedERC20.address);
@@ -432,8 +433,6 @@ describe("MarinateV2", async function () {
       MockedERC20 = await _MockedERC20.deploy("MCK", "MCK");
     });
     it("Add Reward Token", async function () {
-
-
       await MarinateV2.addApprovedRewardToken(MockedERC20.address);
       const rewardAdded = await MarinateV2.isApprovedRewardToken(MockedERC20.address);
       expect(rewardAdded).to.be.equal(true);
