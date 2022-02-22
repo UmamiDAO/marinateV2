@@ -4,7 +4,6 @@ const SCALE = ethers.utils.parseUnits("1", 40);
 
 describe("MarinateV2 - transfer", async function () {
   let owner, accounts;
-  let DateTime;
   let MockedUMAMI;
   let MarinateV2;
   let WhitelistedDepositContract, BlockedDepositContract;
@@ -32,7 +31,7 @@ describe("MarinateV2 - transfer", async function () {
 
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
     const _DepositContract = await ethers.getContractFactory("MockDepositContract");
-    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
+    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
     WhitelistedDepositContract = await _DepositContract.deploy(MarinateV2.address);
     BlockedDepositContract = await _DepositContract.deploy(MarinateV2.address);
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
@@ -45,8 +44,6 @@ describe("MarinateV2 - transfer", async function () {
   before(async () => {
     // setup peripheral contracts
     [owner, ...accounts] = await ethers.getSigners();
-    const _DateTime = await ethers.getContractFactory("MockDateTime");
-    DateTime = await _DateTime.deploy();
     const _MockedUMAMI = await ethers.getContractFactory("MockERC20");
     MockedUMAMI = await _MockedUMAMI.deploy("UMAMI", "UMAMI");
     const _MockedNFT = await ethers.getContractFactory("MockERC721");

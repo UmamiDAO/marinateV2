@@ -21,7 +21,7 @@ describe("MarinateV2", async function () {
 
   async function setup() {
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
-    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, DateTime.address, "Marinated UMAMI", "mUMAMI");
+    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
     await MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
@@ -31,8 +31,6 @@ describe("MarinateV2", async function () {
   before(async () => {
     // setup peripheral contracts
     [owner, ...accounts] = await ethers.getSigners();
-    const _DateTime = await ethers.getContractFactory("MockDateTime");
-    DateTime = await _DateTime.deploy();
     const _MockedUMAMI = await ethers.getContractFactory("MockERC20");
     MockedUMAMI = await _MockedUMAMI.deploy("UMAMI", "UMAMI");
     const _MockedNFT = await ethers.getContractFactory("MockERC721");
