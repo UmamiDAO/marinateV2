@@ -39,13 +39,11 @@ import { ContractWhitelist } from "./ContractWhitelist.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import { IDateTime } from "./interfaces/IDateTime.sol";
 
 contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
     using SafeERC20 for IERC20;
 
     address public immutable UMAMI;
-    IDateTime public dateTime;
     uint256 public totalStaked = 0;
     uint256 public totalMultipliedStaked = 0;
     uint256 public BASE = 10000;
@@ -123,12 +121,10 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
 
     constructor(
         address _UMAMI,
-        address _dateTime,
         string memory name,
         string memory symbol
     ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
-        dateTime = IDateTime(_dateTime);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         rewardTokens.push(_UMAMI);
