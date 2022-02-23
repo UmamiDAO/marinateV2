@@ -48,9 +48,6 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
     uint256 public totalMultipliedStaked = 0;
     uint256 public BASE = 10000;
 
-    /// @notice rewards awarded when nobody was staked
-    mapping(address => uint256) public excessTokenRewards;
-
     /// @notice total number of reward epochs
     mapping(address => uint256) public totalTokenRewardsPerStake;
 
@@ -153,11 +150,6 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         require(isApprovedRewardToken[token], "Token is not approved for rewards");
         require(totalMultipliedStaked > 0, "Total multiplied staked equal to zero");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        if (totalStaked == 0) {
-            // Rewards which nobody is eligible for
-            excessTokenRewards[token] += amount;
-            return;
-        }
         uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
         require(rewardPerStake > 0, "Insufficient reward per stake");
         totalTokenRewardsPerStake[token] += rewardPerStake;
@@ -358,20 +350,6 @@ contract MarinateV2V2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20,
         uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][staker];
         uint256 pendingRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
         totalRewards = pendingRewards + toBePaid[token][staker];
-    }
-
-    /**
-     * @notice withdraw excess rewards from the contract
-     */
-    function withdrawExcessRewards() external onlyAdmin {
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            uint256 amount = excessTokenRewards[rewardTokens[i]];
-            if (amount == 0) {
-                continue;
-            }
-            IERC20(rewardTokens[i]).safeTransfer(msg.sender, amount);
-            excessTokenRewards[rewardTokens[i]] = 0;
-        }
     }
 
     /**
