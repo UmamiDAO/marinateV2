@@ -7,14 +7,12 @@ const hre = require("hardhat");
 
 async function main() {
   const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
-  MarinateV2 = await _MarinateV2.deploy(
-    "0x54155f8558d402074549E2640BBec67291a2838b",
-    "0x54155f8558d402074549E2640BBec67291a2838b",
-    "Marinated UMAMI",
-    "mUMAMI",
-  );
+  const _TestUMAMU = await ethers.getContractFactory("MockERC20");
+  let umami = await _TestUMAMU.deploy("UMAMI", "UMAMI");
+  let MarinateV2 = await _MarinateV2.deploy(umami.address, "Marinated UMAMI", "mUMAMI");
 
-  console.log("Greeter deployed to:", MarinateV2.address);
+  console.log("UMAMI token deployed to:", umami.address);
+  console.log("MarinateV2 deployed to:", MarinateV2.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

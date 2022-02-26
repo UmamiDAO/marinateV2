@@ -7,7 +7,7 @@ describe("MarinateV2", async function () {
   let DateTime;
   let MockedUMAMI;
   let MarinateV2;
-  let RewardToken, MockedNFT, MockedNFT2, MockedERC20;
+  let RewardToken, MockedNFT, MockedNFT2, MockedERC20, MockedERC202;
 
   async function printTokenBalance(token, address) {
     let balance = await token.balanceOf(address);
@@ -20,7 +20,7 @@ describe("MarinateV2", async function () {
   }
 
   async function setup() {
-    const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
+    const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
@@ -184,6 +184,13 @@ describe("MarinateV2", async function () {
       );
     });
 
+    it("reverts if withdrawal not enabled", async function () {
+      await MarinateV2.connect(owner).setMultiplierStakeEnabled(false);
+      await expect(MarinateV2.connect(accounts[0]).withdrawMultiplier(MockedNFT2.address, 4)).to.be.revertedWith(
+        "Withdraw not enabled",
+      );
+    });
+
     it("can only withdraw if a multiplier has been staked", async function () {
       let amount = 100000;
       await MarinateV2.connect(owner).setMultiplierWithdrawEnabled(true);
@@ -304,6 +311,27 @@ describe("MarinateV2", async function () {
         Math.round(initMarinatorInfo.multipliedAmount / Math.pow(10, 40)) * 1.07,
       );
     });
+
+    it("reverts if multiplierStakingEnabled disabled", async function () {
+      let amount = 100000;
+      await MarinateV2.connect(owner).setMultiplierStakeEnabled(false);
+      await MockedNFT2.mint(accounts[0].address, 22);
+      await MockedNFT2.connect(accounts[0]).approve(MarinateV2.address, "22");
+      await expect(MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT2.address, "22")).to.be.revertedWith(
+        "NFT staking not enabled",
+      );
+    });
+    it("reverts if nft already staked", async function () {
+      let amount = 100000;
+      await MockedNFT.mint(accounts[0].address, 44);
+      await MockedNFT.connect(accounts[0]).approve(MarinateV2.address, "44");
+      await MockedNFT.mint(accounts[0].address, 444);
+      await MockedNFT.connect(accounts[0]).approve(MarinateV2.address, "444");
+      MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT.address, "444");
+      await expect(MarinateV2.connect(accounts[0]).stakeMultiplier(MockedNFT.address, "44")).to.be.revertedWith(
+        "NFT already staked",
+      );
+    });
   });
 
   describe("#addReward", async function () {
@@ -344,9 +372,7 @@ describe("MarinateV2", async function () {
       );
 
       const totalRewardsPerStake = await MarinateV2.totalTokenRewardsPerStake(MockedERC20.address);
-      const excessRewardsPerStake = await MarinateV2.excessTokenRewards(MockedERC20.address);
       expect(totalRewardsPerStake).to.equal(0);
-      expect(excessRewardsPerStake).to.equal(0);
     });
   });
 
@@ -405,27 +431,6 @@ describe("MarinateV2", async function () {
     });
   });
 
-  describe("#withdrawExcessRewards", async function () {
-    beforeEach(async () => {
-      await setup();
-    });
-    it("can withdraw excess rewards", async function () {
-      let amount = 100000;
-      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
-      await MarinateV2.connect(accounts[0]).stake(amount);
-
-      let one = ethers.utils.parseEther("1");
-      await MarinateV2.addApprovedRewardToken(MockedERC20.address);
-      await MockedERC20.mint(owner.address, one);
-      await MockedERC20.connect(owner).approve(MarinateV2.address, one);
-
-      await MarinateV2.connect(owner).addReward(MockedERC20.address, one);
-      await MarinateV2.connect(owner).withdrawExcessRewards();
-      const balance = await MockedERC20.balanceOf(owner.address);
-      expect(balance).to.equal(one);
-    });
-  });
-
   describe("#managingRewardTokens", async function () {
     beforeEach(async () => {
       await setup();
@@ -450,30 +455,211 @@ describe("MarinateV2", async function () {
     });
   });
 
-  /*
-  it("Receiver - UMAMI is wrapped", async function () {
-    await marinateReceiver.addDistributedToken(UMAMI.address);
-    await UMAMI.transfer(marinateReceiver.address, ethers.utils.parseUnits("100", 9));
-    await marinate.addApprovedRewardToken(wsUMAMI.address);
-    await marinateReceiver.sendBalancesAsRewards();
-    expect(await marinate.excessTokenRewards(wsUMAMI.address), "Not added to excessTokenRewards").to.be.gt(0);
+  describe("#getAvailableTokenRewards", async function () {
+    beforeEach(async () => {
+      await setup();
+      const _MockedERC20 = await ethers.getContractFactory("MockERC20");
+      MockedERC20 = await _MockedERC20.deploy("MCK", "MCK");
+      MockedERC202 = await _MockedERC20.deploy("MCK2", "MCK2");
+    });
+    it("retrives accurate token reward 0 rewards", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      await MarinateV2.addApprovedRewardToken(MockedERC20.address);
+
+      const totalRewards = await MarinateV2.getAvailableTokenRewards(accounts[0].address, MockedERC20.address);
+      expect(totalRewards).to.equal(0);
+    });
+
+    it("retrives accurate token reward - 1 reward", async function () {
+      let one = ethers.utils.parseEther("1");
+      let two = ethers.utils.parseEther("2");
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).transfer(accounts[1].address, partial);
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[0]).stake(partial);
+      await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[1]).stake(partial);
+
+      await MarinateV2.addApprovedRewardToken(MockedERC20.address);
+
+      await MockedERC20.mint(owner.address, two);
+      await MockedERC20.connect(owner).approve(MarinateV2.address, two);
+      await MarinateV2.connect(owner).addReward(MockedERC20.address, two);
+
+      const accountReward = await MarinateV2.getAvailableTokenRewards(accounts[0].address, MockedERC20.address);
+      const accountReward1 = await MarinateV2.getAvailableTokenRewards(accounts[1].address, MockedERC20.address);
+
+      expect(accountReward).to.equal(one);
+      expect(accountReward1).to.equal(one);
+    });
+
+    it("retrives accurate token reward - 2 rewards", async function () {
+      let one = ethers.utils.parseEther("1");
+      let two = ethers.utils.parseEther("2");
+      let half = ethers.utils.parseEther("0.5");
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).transfer(accounts[1].address, partial);
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[0]).stake(partial);
+      await MockedUMAMI.connect(accounts[1]).approve(MarinateV2.address, partial);
+      await MarinateV2.connect(accounts[1]).stake(partial);
+
+      await MarinateV2.addApprovedRewardToken(MockedERC20.address);
+      await MarinateV2.addApprovedRewardToken(MockedERC202.address);
+
+      await MockedERC20.mint(owner.address, two);
+      await MockedERC20.connect(owner).approve(MarinateV2.address, two);
+      await MarinateV2.connect(owner).addReward(MockedERC20.address, two);
+
+      await MockedERC202.mint(owner.address, one);
+      await MockedERC202.connect(owner).approve(MarinateV2.address, one);
+      await MarinateV2.connect(owner).addReward(MockedERC202.address, one);
+
+      const accountReward = await MarinateV2.getAvailableTokenRewards(accounts[0].address, MockedERC20.address);
+      const accountReward1 = await MarinateV2.getAvailableTokenRewards(accounts[1].address, MockedERC20.address);
+      const Reward = await MarinateV2.getAvailableTokenRewards(accounts[0].address, MockedERC202.address);
+      const Reward1 = await MarinateV2.getAvailableTokenRewards(accounts[1].address, MockedERC202.address);
+
+      expect(accountReward).to.equal(one);
+      expect(accountReward1).to.equal(one);
+      expect(Reward).to.equal(half);
+      expect(Reward1).to.equal(half);
+    });
   });
-  Tests:
-Man: multiplier and none
-Transfer -
-W2W - partial transfer W2 no balance - man
-W2W - full transfer W2 no balance - man
-W2W - partial transfer W2 small balance - man
-W2W - full transfer W2 small balance - man
-W2WC - partial transfer WC no balance
-W2WC - partial transfer WC small balance
-W2WC - full transfer WC no balance
-W2WC - full transfer WC small balance
-WC2W - partial transfer W no balance - man
-WC2W - partial transfer W small balance - man
-W2BC - partial transfer BC no balance
-W2BC - partial transfer BC small balance
-BC2W - partial transfer W no balance
-BC2W - partial transfer W small balance
-  */
+
+  describe("#removeApprovedMultiplierToken", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+    it("removes an approved multiplier token", async function () {
+      await MarinateV2.connect(owner).addApprovedMultiplierToken(MockedNFT2.address, 500);
+
+      const before = await MarinateV2.isApprovedMultiplierNFT(MockedNFT.address);
+      const before1 = await MarinateV2.isApprovedMultiplierNFT(MockedNFT2.address);
+
+      expect(before).to.equal(true);
+      expect(before1).to.equal(true);
+
+      await MarinateV2.connect(owner).removeApprovedMultiplierToken(MockedNFT2.address);
+
+      const result = await MarinateV2.isApprovedMultiplierNFT(MockedNFT.address);
+      const result1 = await MarinateV2.isApprovedMultiplierNFT(MockedNFT2.address);
+
+      expect(result).to.equal(true);
+      expect(result1).to.equal(false);
+    });
+
+    it("reverts if not a multiplier nft", async function () {
+      await expect(MarinateV2.connect(owner).removeApprovedMultiplierToken(MockedNFT2.address)).to.be.revertedWith(
+        "Approved NFT does not exist",
+      );
+    });
+  });
+
+  describe("#setScale", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+    it("sets scale", async function () {
+      await MarinateV2.connect(owner).setScale(500000000);
+      const scale = await MarinateV2.SCALE();
+      expect(scale).to.equal(500000000);
+    });
+
+    it("reverts if not admin", async function () {
+      await expect(MarinateV2.connect(accounts[1]).setScale(500000000)).to.revertedWith("Caller is not an admin");
+    });
+  });
+
+  describe("#setMultiplierStakeEnabled", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+    it("sets scale", async function () {
+      await MarinateV2.connect(owner).setMultiplierStakeEnabled(false);
+      const scale = await MarinateV2.multiplierStakingEnabled();
+      expect(scale).to.equal(false);
+    });
+
+    it("reverts if not admin", async function () {
+      await expect(MarinateV2.connect(accounts[1]).setMultiplierStakeEnabled(false)).to.revertedWith(
+        "Caller is not an admin",
+      );
+    });
+  });
+
+  describe("#addApprovedMultiplierToken", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+
+    it("reverts if already added", async function () {
+      await expect(MarinateV2.connect(owner).addApprovedMultiplierToken(MockedNFT.address, 500)).to.revertedWith(
+        "Approved NFT exists",
+      );
+    });
+  });
+
+  describe("#removeApprovedRewardToken", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+
+    it("reverts if already added", async function () {
+      await expect(MarinateV2.connect(owner).removeApprovedRewardToken(MockedERC20.address)).to.revertedWith(
+        "Reward token does not exist",
+      );
+    });
+  });
+
+  describe("#migrateToken", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+
+    it("transfers tokens from address", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+
+      await RewardToken.mint(owner.address, amount);
+      await RewardToken.connect(owner).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(owner).addReward(RewardToken.address, amount);
+      await MarinateV2.connect(owner).migrateToken(RewardToken.address, accounts[4].address, partial);
+
+      const balanceC = await RewardToken.balanceOf(MarinateV2.address);
+      const balanceA = await RewardToken.balanceOf(accounts[4].address);
+      expect(balanceC).to.equal(partial);
+      expect(balanceA).to.equal(partial);
+    });
+    it("transfers tokens from address", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+  
+      await RewardToken.mint(owner.address, amount);
+      await RewardToken.connect(owner).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(owner).addReward(RewardToken.address, amount);
+      await MarinateV2.connect(owner).migrateToken(RewardToken.address, accounts[5].address, 0);
+  
+      const balanceC = await RewardToken.balanceOf(MarinateV2.address);
+      const balanceA = await RewardToken.balanceOf(accounts[5].address);
+      expect(balanceC).to.equal(0);
+      expect(balanceA).to.equal(amount);
+    });
+  });
+
+  describe("#recoverEth", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+
+    it("can retrive eth", async function () {
+      await MarinateV2.connect(owner).recoverEth();
+    });
+  });
+
 });

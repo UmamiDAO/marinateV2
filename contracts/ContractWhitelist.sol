@@ -38,7 +38,7 @@ abstract contract ContractWhitelist is Ownable {
         return true;
     }
 
-    /* ========== MODIFIERS ========== */
+    /* ==== MODIFIERS ==== */
 
     // Modifier is eligible sender modifier
     modifier isEligibleSender() {

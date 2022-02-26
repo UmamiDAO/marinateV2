@@ -29,7 +29,7 @@ describe("MarinateV2 - transfer", async function () {
     const _RewardToken = await ethers.getContractFactory("MockERC20");
     RewardToken = await _RewardToken.deploy("RWD", "RWD");
 
-    const _MarinateV2 = await ethers.getContractFactory("MarinateV2V2");
+    const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
     const _DepositContract = await ethers.getContractFactory("MockDepositContract");
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
     WhitelistedDepositContract = await _DepositContract.deploy(MarinateV2.address);
