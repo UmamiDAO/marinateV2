@@ -42,6 +42,7 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 /// @title Umami MarinateV2 Staking
+/// @author 0xtoki luffyowls
 contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
     using SafeERC20 for IERC20;
 
