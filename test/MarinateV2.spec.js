@@ -97,11 +97,21 @@ describe("MarinateV2", async function () {
       const toBePaidRewards = await MarinateV2.toBePaid(RewardToken.address, accounts[0].address);
       expect(toBePaidRewards).to.equal(100000);
     });
+    it("Stake twice", async function () {
+      const amount = ethers.utils.parseEther("100");
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount.mul(2));
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      const info = await MarinateV2.marinatorInfo(accounts[0].address);
+      expect(info.amount).to.be.equal(amount.mul(2));
+      expect(info.multipliedAmount.div(SCALE)).to.be.equal(amount.mul(2));
+    });
   });
   describe("#withdraw", async function () {
     beforeEach(async () => {
       await setup();
     });
+
     it("sets storage variables after withdrawing", async function () {
       let amount = 100000;
       await MarinateV2.connect(owner).setStakingWithdrawEnabled(true);
@@ -342,7 +352,7 @@ describe("MarinateV2", async function () {
     });
     it("can only add a reward of an approved token", async function () {
       await expect(MarinateV2.connect(owner).addReward(MockedERC20.address, 1)).to.be.revertedWith(
-        "Token is not approved for rewards",
+        "Token is not approved",
       );
     });
 
@@ -368,7 +378,7 @@ describe("MarinateV2", async function () {
       await MockedERC20.connect(owner).approve(MarinateV2.address, one);
 
       await expect(MarinateV2.connect(owner).addReward(MockedERC20.address, one)).to.be.revertedWith(
-        "Total multiplied staked equal to zero",
+        "Total multiplied staked zero",
       );
 
       const totalRewardsPerStake = await MarinateV2.totalTokenRewardsPerStake(MockedERC20.address);

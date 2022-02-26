@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
+//                                                                            //
 //                              #@@@@@@@@@@@@&,                               //
 //                      .@@@@@   .@@@@@@@@@@@@@@@@@@@*                        //
 //                  %@@@,    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@                    //
@@ -28,27 +29,35 @@ pragma solidity ^0.8.0;
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-// contracts
+// Libraries
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ContractWhitelist } from "./ContractWhitelist.sol";
 
-// interfaces
+// Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
+/// @title Umami MarinateV2 Staking
 contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
     using SafeERC20 for IERC20;
 
+    /// @notice address of the UMAMI token
     address public immutable UMAMI;
-    uint256 public totalStaked = 0;
-    uint256 public totalMultipliedStaked = 0;
-    uint256 public BASE = 10000;
 
-    /// @notice total number of reward epochs
+    /// @notice total UMAMI staked
+    uint256 public totalStaked = 0;
+
+    /// @notice total staked taking into consideration multipliers
+    uint256 public totalMultipliedStaked = 0;
+
+    /// @notice for base calculations
+    uint256 public constant BASE = 10000;
+
+    /// @notice ttal token rewards
     mapping(address => uint256) public totalTokenRewardsPerStake;
 
     /// @notice number of reward epochs paid to marinator
@@ -147,8 +156,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param amount the amount of the token
      */
     function addReward(address token, uint256 amount) external nonReentrant {
-        require(isApprovedRewardToken[token], "Token is not approved for rewards");
-        require(totalMultipliedStaked > 0, "Total multiplied staked equal to zero");
+        require(isApprovedRewardToken[token], "Token is not approved");
+        require(totalMultipliedStaked > 0, "Total multiplied staked zero");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
