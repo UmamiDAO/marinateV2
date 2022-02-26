@@ -338,7 +338,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     }
 
     /************************************************
-     *  TOKENS
+     *  MUTATORS
      ***********************************************/
 
     /**
@@ -393,10 +393,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
             }
         }
     }
-
-    /************************************************
-     *  MUTATORS
-     ***********************************************/
 
     /**
      * @notice set the scale
