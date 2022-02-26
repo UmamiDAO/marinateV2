@@ -106,14 +106,18 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice the admin role hash
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    /*==== STRUCTS ====*/
+    /************************************************
+     *  STRUCTS
+     ***********************************************/
 
     struct Marinator {
         uint256 amount;
         uint256 multipliedAmount;
     }
 
-    /*==== EVENTS ====*/
+    /************************************************
+     *  EVENTS
+     ***********************************************/
 
     event Stake(address addr, uint256 amount, uint256 multipliedAmount);
     event StakeMultiplier(address addr, address nft, uint256 tokenId, uint256 multipliedAmount);
@@ -123,7 +127,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     event RewardAdded(address token, uint256 amount, uint256 rps);
     event RewardClaimed(address token, address staker, uint256 amount);
 
-    /*==== CONSTRUCTOR ====*/
+    /************************************************
+     *  CONSTRUCTOR
+     ***********************************************/
 
     constructor(
         address _UMAMI,
@@ -141,30 +147,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         multiplierWithdrawEnabled = false;
     }
 
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external pure override returns (bytes4) {
-        return MarinateV2.onERC721Received.selector;
-    }
-
-    /**
-     * @notice adds a reward token amount
-     * @param token the token address of the reward
-     * @param amount the amount of the token
-     */
-    function addReward(address token, uint256 amount) external nonReentrant {
-        require(isApprovedRewardToken[token], "Token is not approved");
-        require(totalMultipliedStaked > 0, "Total multiplied staked zero");
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-
-        uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
-        require(rewardPerStake > 0, "Insufficient reward per stake");
-        totalTokenRewardsPerStake[token] += rewardPerStake;
-        emit RewardAdded(token, amount, rewardPerStake);
-    }
+    /************************************************
+     *  DEPOSIT & WITHDRAW
+     ***********************************************/
 
     /**
      * @notice stake a multiplier nft
@@ -274,12 +259,32 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         emit Withdraw(msg.sender, info.amount);
     }
 
+    /************************************************
+     *  REWARDS
+     ***********************************************/
+
     /**
      * @notice claim rewards
      */
     function claimRewards() public nonReentrant {
         _collectRewards(msg.sender);
         _payRewards(msg.sender);
+    }
+
+    /**
+     * @notice adds a reward token amount
+     * @param token the token address of the reward
+     * @param amount the amount of the token
+     */
+    function addReward(address token, uint256 amount) external nonReentrant {
+        require(isApprovedRewardToken[token], "Token is not approved");
+        require(totalMultipliedStaked > 0, "Total multiplied staked zero");
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+
+        uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
+        require(rewardPerStake > 0, "Insufficient reward per stake");
+        totalTokenRewardsPerStake[token] += rewardPerStake;
+        emit RewardAdded(token, amount, rewardPerStake);
     }
 
     /**
@@ -331,36 +336,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         }
     }
 
-    /**
-     * @notice get the multiplied amount of total share
-     * @param amount the unmultiplied amount
-     * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
-     */
-    function _getMultipliedAmount(uint256 amount, address account) private view returns (uint256 multipliedAmount) {
-        if (!isWhitelisted(account)) {
-            return 0;
-        }
-        uint256 multiplier = BASE;
-        for (uint256 i = 0; i < multiplierNFTs.length; i++) {
-            if (isNFTStaked[account][multiplierNFTs[i]]) {
-                multiplier += nftMultiplier[multiplierNFTs[i]];
-            }
-        }
-        multipliedAmount = (amount * SCALE * multiplier) / BASE;
-    }
-
-    /**
-     * @notice get the available token rewards
-     * @param staker the marinator
-     * @param token the token to check for
-     * @return totalRewards - the available rewards for that token and marinator
-     */
-    function getAvailableTokenRewards(address staker, address token) external view returns (uint256 totalRewards) {
-        Marinator memory info = marinatorInfo[staker];
-        uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][staker];
-        uint256 pendingRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
-        totalRewards = pendingRewards + toBePaid[token][staker];
-    }
+    /************************************************
+     *  TOKENS
+     ***********************************************/
 
     /**
      * @notice add an approved reward token to be paid
@@ -415,7 +393,88 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         }
     }
 
-    /*==== ERC20 OVERRIDES ====*/
+    /************************************************
+     *  MUTATORS
+     ***********************************************/
+
+    /**
+     * @notice set the scale
+     * @param _scale scale
+     */
+    function setScale(uint256 _scale) external onlyAdmin {
+        SCALE = _scale;
+    }
+
+    /**
+     * @notice set staking enabled
+     * @param enabled enabled
+     */
+    function setStakeEnabled(bool enabled) external onlyAdmin {
+        stakeEnabled = enabled;
+    }
+
+    /**
+     * @notice set multiplier staking enabled
+     * @param enabled enabled
+     */
+    function setMultiplierStakeEnabled(bool enabled) external onlyAdmin {
+        multiplierStakingEnabled = enabled;
+    }
+
+    /**
+     * @notice set withdrawal enabled
+     * @param enabled enabled
+     */
+    function setStakingWithdrawEnabled(bool enabled) external onlyAdmin {
+        withdrawEnabled = enabled;
+    }
+
+    /**
+     * @notice set multiplier withdrawal enabled
+     * @param enabled enabled
+     */
+    function setMultiplierWithdrawEnabled(bool enabled) external onlyAdmin {
+        multiplierWithdrawEnabled = enabled;
+    }
+
+    /************************************************
+     *  VIEWS
+     ***********************************************/
+
+    /**
+     * @notice get the multiplied amount of total share
+     * @param amount the unmultiplied amount
+     * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
+     */
+    function _getMultipliedAmount(uint256 amount, address account) private view returns (uint256 multipliedAmount) {
+        if (!isWhitelisted(account)) {
+            return 0;
+        }
+        uint256 multiplier = BASE;
+        for (uint256 i = 0; i < multiplierNFTs.length; i++) {
+            if (isNFTStaked[account][multiplierNFTs[i]]) {
+                multiplier += nftMultiplier[multiplierNFTs[i]];
+            }
+        }
+        multipliedAmount = (amount * SCALE * multiplier) / BASE;
+    }
+
+    /**
+     * @notice get the available token rewards
+     * @param staker the marinator
+     * @param token the token to check for
+     * @return totalRewards - the available rewards for that token and marinator
+     */
+    function getAvailableTokenRewards(address staker, address token) external view returns (uint256 totalRewards) {
+        Marinator memory info = marinatorInfo[staker];
+        uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][staker];
+        uint256 pendingRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
+        totalRewards = pendingRewards + toBePaid[token][staker];
+    }
+
+    /************************************************
+     *  ERC20 OVERRIDES
+     ***********************************************/
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
@@ -503,49 +562,25 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         }
     }
 
-    /*==== MUTATORS ====*/
+    /************************************************
+     *  ERC721 HANDLERS
+     ***********************************************/
 
     /**
-     * @notice set the scale
-     * @param _scale scale
+     * @notice ERC721 transfer
      */
-    function setScale(uint256 _scale) external onlyAdmin {
-        SCALE = _scale;
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        return MarinateV2.onERC721Received.selector;
     }
 
-    /**
-     * @notice set staking enabled
-     * @param enabled enabled
-     */
-    function setStakeEnabled(bool enabled) external onlyAdmin {
-        stakeEnabled = enabled;
-    }
-
-    /**
-     * @notice set multiplier staking enabled
-     * @param enabled enabled
-     */
-    function setMultiplierStakeEnabled(bool enabled) external onlyAdmin {
-        multiplierStakingEnabled = enabled;
-    }
-
-    /**
-     * @notice set withdrawal enabled
-     * @param enabled enabled
-     */
-    function setStakingWithdrawEnabled(bool enabled) external onlyAdmin {
-        withdrawEnabled = enabled;
-    }
-
-    /**
-     * @notice set multiplier withdrawal enabled
-     * @param enabled enabled
-     */
-    function setMultiplierWithdrawEnabled(bool enabled) external onlyAdmin {
-        multiplierWithdrawEnabled = enabled;
-    }
-
-    /*==== ADMIN ====*/
+    /************************************************
+     *  ADMIN
+     ***********************************************/
 
     /**
      * @notice migrate a token to a different address
@@ -575,7 +610,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         require(success, "Withdraw failed");
     }
 
-    /*==== MODIFIERS ====*/
+    /************************************************
+     *  MODIFIERS
+     ***********************************************/
 
     modifier onlyAdmin() {
         require(hasRole(ADMIN_ROLE, msg.sender), "Caller is not an admin");
