@@ -46,17 +46,9 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
 contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
     using SafeERC20 for IERC20;
 
-    /// @notice address of the UMAMI token
-    address public immutable UMAMI;
-
-    /// @notice total UMAMI staked
-    uint256 public totalStaked = 0;
-
-    /// @notice total staked taking into consideration multipliers
-    uint256 public totalMultipliedStaked = 0;
-
-    /// @notice for base calculations
-    uint256 public constant BASE = 10000;
+    /************************************************
+     *  STORAGE
+     ***********************************************/
 
     /// @notice ttal token rewards
     mapping(address => uint256) public totalTokenRewardsPerStake;
@@ -89,9 +81,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice an array of multiplier tokens to use for multiplying the reward
     address[] public multiplierNFTs;
 
-    /// @notice scale used for calcs
-    uint256 public SCALE = 1e40;
-
     /// @notice is staking enabled
     bool public stakeEnabled;
 
@@ -104,8 +93,27 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice allow early withdrawals from staking multiplier
     bool public multiplierWithdrawEnabled;
 
+    /// @notice total UMAMI staked
+    uint256 public totalStaked;
+
+    /// @notice total staked taking into consideration multipliers
+    uint256 public totalMultipliedStaked;
+
+    /// @notice scale used for calcs
+    uint256 public SCALE;
+
+    /************************************************
+     *  IMMUTABLES & CONSTANTS
+     ***********************************************/
+
     /// @notice the admin role hash
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+    /// @notice for base calculations
+    uint256 public constant BASE = 10000;
+
+    /// @notice address of the UMAMI token
+    address public immutable UMAMI;
 
     /************************************************
      *  STRUCTS
@@ -146,6 +154,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         multiplierStakingEnabled = true;
         withdrawEnabled = false;
         multiplierWithdrawEnabled = false;
+        totalStaked = 0;
+        totalMultipliedStaked = 0;
+        SCALE = 1e40;
     }
 
     /************************************************
@@ -228,6 +239,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         _mint(msg.sender, amount);
 
         uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
+
         // store the sender's info
         marinatorInfo[msg.sender] = Marinator({
             amount: info.amount + amount,
@@ -280,6 +292,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function addReward(address token, uint256 amount) external nonReentrant {
         require(isApprovedRewardToken[token], "Token is not approved");
         require(totalMultipliedStaked > 0, "Total multiplied staked zero");
+
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
