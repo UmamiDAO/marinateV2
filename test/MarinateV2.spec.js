@@ -21,7 +21,7 @@ describe("MarinateV2", async function () {
 
   async function setup() {
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
-    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
+    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI", "1000000000000000000000");
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
     await MockedUMAMI.mint(owner.address, ethers.utils.parseEther("100000"));
@@ -669,6 +669,12 @@ describe("MarinateV2", async function () {
 
     it("can retrive eth", async function () {
       await MarinateV2.connect(owner).recoverEth();
+    });
+  });
+
+  describe("#setDepositLimit", async function () {
+    beforeEach(async () => {
+      await setup();
     });
   });
 });

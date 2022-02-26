@@ -102,6 +102,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice scale used for calcs
     uint256 public SCALE;
 
+    /// @notice deposit upper limit
+    uint256 public depositLimit;
+
     /************************************************
      *  IMMUTABLES & CONSTANTS
      ***********************************************/
@@ -143,7 +146,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     constructor(
         address _UMAMI,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        uint256 _depositLimit
     ) ERC20(name, symbol) {
         UMAMI = _UMAMI;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -154,6 +158,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         multiplierStakingEnabled = true;
         withdrawEnabled = false;
         multiplierWithdrawEnabled = false;
+        depositLimit = _depositLimit;
         totalStaked = 0;
         totalMultipliedStaked = 0;
         SCALE = 1e40;
@@ -226,6 +231,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function stake(uint256 amount) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
+        require(totalStaked < depositLimit, "Invalid stake amount");
 
         Marinator memory info = marinatorInfo[msg.sender];
         if (info.amount == 0) {
@@ -445,6 +451,14 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function setMultiplierWithdrawEnabled(bool enabled) external onlyAdmin {
         multiplierWithdrawEnabled = enabled;
+    }
+
+    /**
+     * @notice set deposit limit
+     * @param limit upper limit for deposits
+     */
+    function setDepositLimit(uint256 limit) external onlyAdmin {
+        depositLimit = limit;
     }
 
     /************************************************

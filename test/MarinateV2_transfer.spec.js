@@ -31,7 +31,7 @@ describe("MarinateV2 - transfer", async function () {
 
     const _MarinateV2 = await ethers.getContractFactory("MarinateV2");
     const _DepositContract = await ethers.getContractFactory("MockDepositContract");
-    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI");
+    MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI", "1000000000000000000000");
     WhitelistedDepositContract = await _DepositContract.deploy(MarinateV2.address);
     BlockedDepositContract = await _DepositContract.deploy(MarinateV2.address);
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
