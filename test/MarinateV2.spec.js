@@ -639,12 +639,12 @@ describe("MarinateV2", async function () {
       let amount = 100000;
       await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
       await MarinateV2.connect(accounts[0]).stake(amount);
-  
+
       await RewardToken.mint(owner.address, amount);
       await RewardToken.connect(owner).approve(MarinateV2.address, amount);
       await MarinateV2.connect(owner).addReward(RewardToken.address, amount);
       await MarinateV2.connect(owner).migrateToken(RewardToken.address, accounts[5].address, 0);
-  
+
       const balanceC = await RewardToken.balanceOf(MarinateV2.address);
       const balanceA = await RewardToken.balanceOf(accounts[5].address);
       expect(balanceC).to.equal(0);
@@ -661,5 +661,4 @@ describe("MarinateV2", async function () {
       await MarinateV2.connect(owner).recoverEth();
     });
   });
-
 });
