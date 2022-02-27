@@ -6,7 +6,7 @@ describe("MarinateV2 - transfer", async function () {
   let owner, accounts;
   let MockedUMAMI;
   let MarinateV2;
-  let WhitelistedDepositContract, BlockedDepositContract;
+  let WhitelistedDepositContract, BlockedDepositContract, BlockedDepositContract2;
   let RewardToken, MockedNFT, MockedNFT2, MockedERC20;
 
   async function printTokenBalance(token, address) {
@@ -34,6 +34,7 @@ describe("MarinateV2 - transfer", async function () {
     MarinateV2 = await _MarinateV2.deploy(MockedUMAMI.address, "Marinated UMAMI", "mUMAMI", "1000000000000000000000");
     WhitelistedDepositContract = await _DepositContract.deploy(MarinateV2.address);
     BlockedDepositContract = await _DepositContract.deploy(MarinateV2.address);
+    BlockedDepositContract2 = await _DepositContract.deploy(MarinateV2.address);
     await MarinateV2.addApprovedRewardToken(RewardToken.address);
     await MarinateV2.addApprovedMultiplierToken(MockedNFT.address, 200);
     await MarinateV2.addToContractWhitelist(WhitelistedDepositContract.address);
@@ -773,6 +774,60 @@ describe("MarinateV2 - transfer", async function () {
       expect(info1.amount).to.equal(0);
       expect(Math.round(info0.multipliedAmount / Math.pow(10, 40))).to.equal(amount);
       expect(Math.round(info1.multipliedAmount / Math.pow(10, 40))).to.equal(0);
+    });
+  });
+
+  describe("#not whitelisted to not whitelisted", async function () {
+    beforeEach(async () => {
+      await setup();
+    });
+    it("sets variables", async function () {
+      let amount = 100000;
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+      await MarinateV2.connect(accounts[0]).approve(BlockedDepositContract.address, amount);
+      await BlockedDepositContract.connect(accounts[0]).deposit(amount);
+
+      let multipliedBalance = await MarinateV2.totalMultipliedStaked();
+      let stakedBalance = await MarinateV2.totalStaked();
+      expect(multipliedBalance).to.equal(0);
+      expect(stakedBalance).to.equal(amount);
+
+      await BlockedDepositContract.connect(accounts[0]).transfer(BlockedDepositContract2.address, amount);
+
+      let bal = await MarinateV2.balanceOf(BlockedDepositContract2.address);
+      expect(bal, "mUMAMI not transferred").to.be.equal(amount);
+      multipliedBalance = await MarinateV2.totalMultipliedStaked();
+      stakedBalance = await MarinateV2.totalStaked();
+      expect(multipliedBalance).to.equal(0);
+      expect(stakedBalance).to.equal(amount);
+    });
+    it("transfers", async function () {
+      let amount = 100000;
+      let partial = 50000;
+      let small = 25000;
+
+      await MockedUMAMI.connect(accounts[0]).approve(MarinateV2.address, amount);
+      await MarinateV2.connect(accounts[0]).stake(amount);
+
+      await MarinateV2.connect(accounts[0]).transfer(BlockedDepositContract.address, amount);
+
+      await expect(MarinateV2.connect(owner).addReward(RewardToken.address, "100000")).to.be.revertedWith("Total multiplied staked zero");
+
+      await BlockedDepositContract.connect(accounts[0]).transfer(BlockedDepositContract2.address, partial);
+
+      await expect(MarinateV2.connect(owner).addReward(RewardToken.address, "100000")).to.be.revertedWith("Total multiplied staked zero");
+
+      await BlockedDepositContract2.connect(accounts[0]).transfer(accounts[0].address, partial);
+
+      await RewardToken.mint(owner.address, "10000000");
+      await RewardToken.connect(owner).approve(MarinateV2.address, "200000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+      await MarinateV2.connect(owner).addReward(RewardToken.address, "100000");
+      await MarinateV2.connect(accounts[0]).claimRewards();
+      let rewardBal = await RewardToken.balanceOf(accounts[0].address);
+      // All rewards
+      expect(rewardBal).to.be.equal("200000");
     });
   });
 });
