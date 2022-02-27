@@ -93,6 +93,12 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice allow early withdrawals from staking multiplier
     bool public multiplierWithdrawEnabled;
 
+    /// @notice if transfering mUMAMI is enabled
+    bool public transferEnabled;
+
+    /// @notice allow payment of rewards
+    bool public payRewardsEnabled;
+
     /// @notice total UMAMI staked
     uint256 public totalStaked;
 
@@ -158,6 +164,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         multiplierStakingEnabled = true;
         withdrawEnabled = false;
         multiplierWithdrawEnabled = false;
+        transferEnabled = true;
+        payRewardsEnabled = true;
         depositLimit = _depositLimit;
         totalStaked = 0;
         totalMultipliedStaked = 0;
@@ -311,6 +319,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @notice pay rewards to a marinator
      */
     function _payRewards(address user) private {
+        require(payRewardsEnabled, "Pay rewards disabled");
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             address token = rewardTokens[i];
             uint256 amount = toBePaid[token][user];
@@ -454,6 +463,22 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     }
 
     /**
+     * @notice set transfer enabled
+     * @param enabled enabled
+     */
+    function setTransferEnabled(bool enabled) external onlyAdmin {
+        transferEnabled = enabled;
+    }
+
+    /**
+     * @notice set pay rewards enabled
+     * @param enabled enabled
+     */
+    function setPayRewardswEnabled(bool enabled) external onlyAdmin {
+        payRewardsEnabled = enabled;
+    }
+
+    /**
      * @notice set deposit limit
      * @param limit upper limit for deposits
      */
@@ -517,6 +542,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         address to,
         uint256
     ) internal virtual override {
+        require(transferEnabled, "Transfer disabled");
         if (from == address(0) || to == address(0)) {
             return;
         } else {
