@@ -231,7 +231,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function stake(uint256 amount) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
-        require(totalStaked < depositLimit, "Invalid stake amount");
+        require(totalStaked < depositLimit, "Deposit capacity reached");
 
         Marinator memory info = marinatorInfo[msg.sender];
         if (info.amount == 0) {
