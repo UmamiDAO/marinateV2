@@ -474,7 +474,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @notice set pay rewards enabled
      * @param enabled enabled
      */
-    function setPayRewardswEnabled(bool enabled) external onlyAdmin {
+    function setPayRewardsEnabled(bool enabled) external onlyAdmin {
         payRewardsEnabled = enabled;
     }
 
