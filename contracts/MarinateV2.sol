@@ -57,7 +57,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     mapping(address => mapping(address => uint256)) public paidTokenRewardsPerStake;
 
     /// @notice the multiplier percentage of an nft
-    /// the multiplier amount for that nft collection represented as a percentaage with base 10000 -> 5% = 500
+    /// the multiplier amount for that nft collection represented as a percentage with base 10000 -> 5% = 500
     mapping(address => uint256) public nftMultiplier;
 
     /// @notice if the user has an nft staked
