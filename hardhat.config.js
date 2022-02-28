@@ -22,7 +22,11 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: { 
+    version: "0.8.4",
+    settings: {
+      optimizer: { enabled: true, runs: 200 }
+    }},
   networks: {
     ropsten: {
       url: process.env.ROPSTEN_URL || "",
@@ -37,8 +41,14 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       chainId: 421611,
     },
+    arbitrum: {
+      url: "https://arbitrum-mainnet.infura.io/v3/c4391fb7499c4423b6e8a62e0e87359d",
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      chainId: 42161,
+    },
     hardhat: {
       allowUnlimitedContractSize: true,
+      
     },
   },
   gasReporter: {
