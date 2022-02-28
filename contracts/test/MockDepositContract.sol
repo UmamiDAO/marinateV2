@@ -28,4 +28,8 @@ contract MockDepositContract {
     function claimMarinateRewards() external {
         MarinateV2(mUMAMI).claimRewards();
     }
+
+    function transfer(address destination, uint256 amount) external {
+        IERC20(mUMAMI).safeTransfer(destination, amount);
+    }
 }
