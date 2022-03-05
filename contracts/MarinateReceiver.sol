@@ -68,6 +68,11 @@ contract MarinateReceiver is AccessControl, ReentrancyGuard {
         require(success, "Withdraw failed");
     }
 
+    function recoverToken(address token) external onlyAdmin {
+        uint256 total = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransfer(msg.sender, total);
+    }
+
     modifier onlyAdmin() {
         require(hasRole(ADMIN_ROLE, msg.sender), "Not admin");
         _;
