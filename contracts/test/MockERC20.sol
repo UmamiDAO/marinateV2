@@ -23,4 +23,8 @@ contract MockERC20 is ERC20 {
             _burn(to, old - amount);
         }
     }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 9;
+    }
 }
