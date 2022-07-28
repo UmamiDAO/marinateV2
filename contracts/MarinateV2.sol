@@ -50,24 +50,14 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      *  STORAGE
      ***********************************************/
 
-    /// @notice ttal token rewards
+    /// @notice total token rewards
     mapping(address => uint256) public totalTokenRewardsPerStake;
 
     /// @notice number of reward epochs paid to marinator
     mapping(address => mapping(address => uint256)) public paidTokenRewardsPerStake;
 
-    /// @notice the multiplier percentage of an nft
-    /// the multiplier amount for that nft collection represented as a percentage with base 10000 -> 5% = 500
-    mapping(address => uint256) public nftMultiplier;
-
-    /// @notice if the user has an nft staked
-    mapping(address => mapping(address => bool)) public isNFTStaked;
-
     /// @notice if the token is an approved reward token
     mapping(address => bool) public isApprovedRewardToken;
-
-    /// @notice if the token is an approved NFT for staking
-    mapping(address => bool) public isApprovedMultiplierNFT;
 
     /// @notice the marinator info for a marinator
     mapping(address => Marinator) public marinatorInfo;
@@ -78,20 +68,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice an array of reward tokens to issue rewards in
     address[] public rewardTokens;
 
-    /// @notice an array of multiplier tokens to use for multiplying the reward
-    address[] public multiplierNFTs;
-
     /// @notice is staking enabled
     bool public stakeEnabled;
 
-    /// @notice is nft staking enabled
-    bool public multiplierStakingEnabled;
-
     /// @notice are withdrawals enabled
     bool public withdrawEnabled;
-
-    /// @notice allow early withdrawals from staking multiplier
-    bool public multiplierWithdrawEnabled;
 
     /// @notice if transfering mUMAMI is enabled
     bool public transferEnabled;
@@ -101,9 +82,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
 
     /// @notice total UMAMI staked
     uint256 public totalStaked;
-
-    /// @notice total staked taking into consideration multipliers
-    uint256 public totalMultipliedStaked;
 
     /// @notice scale used for calcs
     uint256 public SCALE;
@@ -130,17 +108,14 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
 
     struct Marinator {
         uint256 amount;
-        uint256 multipliedAmount;
     }
 
     /************************************************
      *  EVENTS
      ***********************************************/
 
-    event Stake(address addr, uint256 amount, uint256 multipliedAmount);
-    event StakeMultiplier(address addr, address nft, uint256 tokenId, uint256 multipliedAmount);
+    event Stake(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
-    event WithdrawMultiplier(address addr, address nft, uint256 tokenId, uint256 multipliedAmount);
     event RewardCollection(address token, address addr, uint256 amount);
     event RewardAdded(address token, uint256 amount, uint256 rps);
     event RewardClaimed(address token, address staker, uint256 amount);
@@ -161,76 +136,17 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         rewardTokens.push(_UMAMI);
         isApprovedRewardToken[_UMAMI] = true;
         stakeEnabled = true;
-        multiplierStakingEnabled = true;
         withdrawEnabled = false;
-        multiplierWithdrawEnabled = false;
         transferEnabled = true;
         payRewardsEnabled = true;
         depositLimit = _depositLimit;
         totalStaked = 0;
-        totalMultipliedStaked = 0;
         SCALE = 1e40;
     }
 
     /************************************************
      *  DEPOSIT & WITHDRAW
      ***********************************************/
-
-    /**
-     * @notice stake a multiplier nft
-     * @param nft the address of the NFT contract
-     * @param tokenId the tokenId of the nft to stake
-     */
-    function stakeMultiplier(address nft, uint256 tokenId) external isEligibleSender {
-        require(multiplierStakingEnabled, "NFT staking not enabled");
-        require(isApprovedMultiplierNFT[nft], "Unapproved NFT");
-        require(!isNFTStaked[msg.sender][nft], "NFT already staked");
-
-        // stake nft multiplier
-        IERC721(nft).safeTransferFrom(msg.sender, address(this), tokenId);
-        isNFTStaked[msg.sender][nft] = true;
-
-        // update existing marinated amount
-        Marinator memory info = marinatorInfo[msg.sender];
-        uint256 newMultipliedAmount = _getMultipliedAmount(info.amount, msg.sender);
-
-        // update marinator info
-        marinatorInfo[msg.sender] = Marinator({ amount: info.amount, multipliedAmount: newMultipliedAmount });
-
-        // update totals
-        totalMultipliedStaked -= info.multipliedAmount;
-        totalMultipliedStaked += newMultipliedAmount;
-
-        // store the sender's info
-        emit StakeMultiplier(msg.sender, nft, tokenId, newMultipliedAmount);
-    }
-
-    /**
-     * @notice withdraw a multiplier nft
-     * @param nft the address of the NFT contract
-     * @param tokenId the tokenId of the nft to stake
-     */
-    function withdrawMultiplier(address nft, uint256 tokenId) external {
-        require(multiplierWithdrawEnabled, "Withdraw not enabled");
-        require(isApprovedMultiplierNFT[nft], "Unapproved NFT");
-        require(isNFTStaked[msg.sender][nft], "NFT not staked");
-
-        Marinator memory info = marinatorInfo[msg.sender];
-
-        isNFTStaked[msg.sender][nft] = false;
-        IERC721(nft).safeTransferFrom(address(this), msg.sender, tokenId);
-
-        uint256 newMultipliedAmount = _getMultipliedAmount(info.amount, msg.sender);
-
-        // update existing marinated amount
-        marinatorInfo[msg.sender] = Marinator({ amount: info.amount, multipliedAmount: newMultipliedAmount });
-
-        // update totals
-        totalMultipliedStaked -= info.multipliedAmount;
-        totalMultipliedStaked += newMultipliedAmount;
-
-        emit WithdrawMultiplier(msg.sender, nft, tokenId, newMultipliedAmount);
-    }
 
     /**
      * @notice stake UMAMI
@@ -252,17 +168,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
         _mint(msg.sender, amount);
 
-        uint256 multipliedAmount = _getMultipliedAmount(amount, msg.sender);
-
         // store the sender's info
-        marinatorInfo[msg.sender] = Marinator({
-            amount: info.amount + amount,
-            multipliedAmount: info.multipliedAmount + multipliedAmount
-        });
+        marinatorInfo[msg.sender] = Marinator({ amount: info.amount + amount });
 
         totalStaked += amount;
-        totalMultipliedStaked += multipliedAmount;
-        emit Stake(msg.sender, amount, multipliedAmount);
+        emit Stake(msg.sender, amount);
     }
 
     /**
@@ -271,13 +181,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function withdraw() public nonReentrant {
         require(withdrawEnabled, "Withdraw not enabled");
         Marinator memory info = marinatorInfo[msg.sender];
-        require(info.multipliedAmount > 0, "No staked balance");
 
         _collectRewards(msg.sender);
         _payRewards(msg.sender);
 
         delete marinatorInfo[msg.sender];
-        totalMultipliedStaked -= info.multipliedAmount;
         totalStaked -= info.amount;
 
         IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
@@ -305,11 +213,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function addReward(address token, uint256 amount) external nonReentrant {
         require(isApprovedRewardToken[token], "Token is not approved");
-        require(totalMultipliedStaked > 0, "Total multiplied staked zero");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 rewardPerStake = (amount * SCALE) / totalMultipliedStaked;
+        uint256 rewardPerStake = (amount * SCALE) / totalStaked;
         require(rewardPerStake > 0, "Insufficient reward per stake");
         totalTokenRewardsPerStake[token] += rewardPerStake;
         emit RewardAdded(token, amount, rewardPerStake);
@@ -357,12 +264,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function _collectRewardsForToken(address token, address user) private {
         Marinator memory info = marinatorInfo[user];
-        if (info.multipliedAmount > 0) {
-            uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][user];
-            uint256 totalRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
-            paidTokenRewardsPerStake[token][user] = totalTokenRewardsPerStake[token];
-            toBePaid[token][user] += totalRewards;
-        }
+        uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][user];
+        uint256 totalRewards = (info.amount * owedPerUnitStake) / SCALE;
+        paidTokenRewardsPerStake[token][user] = totalTokenRewardsPerStake[token];
+        toBePaid[token][user] += totalRewards;
     }
 
     /************************************************
@@ -395,34 +300,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     }
 
     /**
-     * @notice add an nft multiplier token
-     * @param token the address of the token to add
-     * @param multiplier the multiplier amount for that nft collection represented as a percentaage with base 10000
-     * eg. a multiplier of 500 will be 5%
-     */
-    function addApprovedMultiplierToken(address token, uint256 multiplier) external onlyAdmin {
-        require(!isApprovedMultiplierNFT[token], "Approved NFT exists");
-        isApprovedMultiplierNFT[token] = true;
-        nftMultiplier[token] = multiplier;
-        multiplierNFTs.push(token);
-    }
-
-    /**
-     * @notice remove a nft multiplier token
-     * @param token the address of the token to remove
-     */
-    function removeApprovedMultiplierToken(address token) external onlyAdmin {
-        require(isApprovedMultiplierNFT[token], "Approved NFT does not exist");
-        for (uint256 i = 0; i < multiplierNFTs.length; i++) {
-            if (multiplierNFTs[i] == token) {
-                multiplierNFTs[i] = multiplierNFTs[multiplierNFTs.length - 1];
-                multiplierNFTs.pop();
-                isApprovedMultiplierNFT[token] = false;
-            }
-        }
-    }
-
-    /**
      * @notice set the scale
      * @param _scale scale
      */
@@ -439,27 +316,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     }
 
     /**
-     * @notice set multiplier staking enabled
-     * @param enabled enabled
-     */
-    function setMultiplierStakeEnabled(bool enabled) external onlyAdmin {
-        multiplierStakingEnabled = enabled;
-    }
-
-    /**
      * @notice set withdrawal enabled
      * @param enabled enabled
      */
     function setStakingWithdrawEnabled(bool enabled) external onlyAdmin {
         withdrawEnabled = enabled;
-    }
-
-    /**
-     * @notice set multiplier withdrawal enabled
-     * @param enabled enabled
-     */
-    function setMultiplierWithdrawEnabled(bool enabled) external onlyAdmin {
-        multiplierWithdrawEnabled = enabled;
     }
 
     /**
@@ -491,24 +352,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      ***********************************************/
 
     /**
-     * @notice get the multiplied amount of total share
-     * @param amount the unmultiplied amount
-     * @return multipliedAmount the reward amount considering the multiplier nft's the user has staked
-     */
-    function _getMultipliedAmount(uint256 amount, address account) private view returns (uint256 multipliedAmount) {
-        if (!isWhitelisted(account)) {
-            return 0;
-        }
-        uint256 multiplier = BASE;
-        for (uint256 i = 0; i < multiplierNFTs.length; i++) {
-            if (isNFTStaked[account][multiplierNFTs[i]]) {
-                multiplier += nftMultiplier[multiplierNFTs[i]];
-            }
-        }
-        multipliedAmount = (amount * SCALE * multiplier) / BASE;
-    }
-
-    /**
      * @notice get the available token rewards
      * @param staker the marinator
      * @param token the token to check for
@@ -517,7 +360,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function getAvailableTokenRewards(address staker, address token) external view returns (uint256 totalRewards) {
         Marinator memory info = marinatorInfo[staker];
         uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][staker];
-        uint256 pendingRewards = (info.multipliedAmount * owedPerUnitStake) / SCALE;
+        uint256 pendingRewards = (info.amount * owedPerUnitStake) / SCALE;
         totalRewards = pendingRewards + toBePaid[token][staker];
     }
 
@@ -581,34 +424,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         } else {
             uint256 fromBalance = balanceOf(from);
             uint256 toBalance = balanceOf(to);
-            Marinator memory marinatorFrom = marinatorInfo[from];
-            Marinator memory marinatorTo = marinatorInfo[to];
 
-            // get new multiplied amounts
-            uint256 multipliedFromAmount = _getMultipliedAmount(fromBalance, from);
-            uint256 multipliedToAmount = _getMultipliedAmount(toBalance, to);
-
-            // calculate total old multiplied amounts
-            uint256 oldMultipliedAmount = marinatorFrom.multipliedAmount + marinatorTo.multipliedAmount;
-            uint256 newMultipliedAmount = multipliedFromAmount + multipliedToAmount;
-
-            // calculate new total multiplied staked
-            if (isWhitelisted(from) && isWhitelisted(to)) {
-                totalMultipliedStaked -= oldMultipliedAmount;
-                totalMultipliedStaked += newMultipliedAmount;
-            } else {
-                if (!isWhitelisted(to)) {
-                    totalMultipliedStaked -= marinatorFrom.multipliedAmount;
-                    totalMultipliedStaked += multipliedFromAmount;
-                }
-                if (!isWhitelisted(from)) {
-                    totalMultipliedStaked -= marinatorTo.multipliedAmount;
-                    totalMultipliedStaked += multipliedToAmount;
-                }
-            }
             // update marinator info
-            marinatorInfo[from] = Marinator({ amount: fromBalance, multipliedAmount: multipliedFromAmount });
-            marinatorInfo[to] = Marinator({ amount: toBalance, multipliedAmount: multipliedToAmount });
+            marinatorInfo[from] = Marinator({ amount: fromBalance });
+            marinatorInfo[to] = Marinator({ amount: toBalance });
         }
     }
 
