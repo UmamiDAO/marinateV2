@@ -39,7 +39,7 @@ contract MarinateReceiver is AccessControl, ReentrancyGuard {
         }
     }
 
-    function _addRewards(address token, uint256 amount) private onlyAdmin {
+    function _addRewards(address token, uint256 amount) private {
         IERC20(token).safeApprove(address(marinateContract), amount);
         marinateContract.addReward(token, amount);
     }
