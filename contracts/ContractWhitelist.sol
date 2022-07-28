@@ -42,7 +42,9 @@ abstract contract ContractWhitelist is Ownable {
 
     // Modifier is eligible sender modifier
     modifier isEligibleSender() {
-        require(isWhitelisted(msg.sender), "ContractWhitelist: Contract must be whitelisted");
+        if (!isSenderEOA()) {
+            require(whitelistedContracts[msg.sender], "ContractWhitelist: Contract must be whitelisted");
+        }
         _;
     }
 
@@ -55,6 +57,11 @@ abstract contract ContractWhitelist is Ownable {
             return whitelistedContracts[addr];
         }
         return true;
+    }
+
+    /// @dev checks if the sender is an EOA
+    function isSenderEOA() public view returns (bool) {
+        return tx.origin == msg.sender;
     }
 
     /// @dev checks for contract or eoa addresses
