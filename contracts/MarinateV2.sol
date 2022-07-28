@@ -469,12 +469,12 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      ***********************************************/
 
     /**
-     * @notice migrate a token to a different address
+     * @notice recover mis-sent tokens
      * @param token the token address
      * @param destination the token destination
      * @param amount the token amount
      */
-    function migrateToken(
+    function recoverToken(
         address token,
         address destination,
         uint256 amount
