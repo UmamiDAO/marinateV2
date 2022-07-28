@@ -290,6 +290,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function removeApprovedRewardToken(address token) external onlyAdmin {
         require(isApprovedRewardToken[token], "Reward token does not exist");
+        require(IERC20(token).balanceOf(address(this)) == 0, "Reward token not completely claimed by everyone yet");
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             if (rewardTokens[i] == token) {
                 rewardTokens[i] = rewardTokens[rewardTokens.length - 1];
