@@ -469,26 +469,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      ***********************************************/
 
     /**
-     * @notice recover mis-sent tokens
-     * @param token the token address
-     * @param destination the token destination
-     * @param amount the token amount
-     */
-    function recoverToken(
-        address token,
-        address destination,
-        uint256 amount
-    ) external onlyAdmin {
-        uint256 total = 0;
-        if (amount == 0) {
-            total = IERC20(token).balanceOf(address(this));
-        } else {
-            total = amount;
-        }
-        IERC20(token).safeTransfer(destination, total);
-    }
-
-    /**
      * @notice recover eth
      */
     function recoverEth() external onlyAdmin {
