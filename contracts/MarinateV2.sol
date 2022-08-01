@@ -387,6 +387,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         uint256
     ) internal virtual override {
         require(transferEnabled, "Transfer disabled");
+        require(isWhitelisted(from) && isWhitelisted(to), "Not whitelisted");
+
         if (from == address(0) || to == address(0)) {
             return;
         } else {
@@ -397,6 +399,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
             _collectRewards(from);
             _collectRewards(to);
         }
+    }
+
+    function _beforeRemoveFromContractWhitelist(address _contract) internal override {
+        _collectRewards(_contract);
+        _payRewards(_contract);
     }
 
     /**

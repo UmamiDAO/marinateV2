@@ -31,12 +31,16 @@ abstract contract ContractWhitelist is Ownable {
     function removeFromContractWhitelist(address _contract) external returns (bool) {
         require(whitelistedContracts[_contract], "ContractWhitelist: Contract not whitelisted");
 
+        _beforeRemoveFromContractWhitelist(_contract);
+
         whitelistedContracts[_contract] = false;
 
         emit RemoveFromContractWhitelist(_contract);
 
         return true;
     }
+
+    function _beforeRemoveFromContractWhitelist(address _contract) internal virtual {}
 
     /* ==== MODIFIERS ==== */
 
