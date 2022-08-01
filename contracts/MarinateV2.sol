@@ -84,7 +84,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     uint256 public totalStaked;
 
     /// @notice scale used for calcs
-    uint256 public SCALE;
+    uint256 public immutable SCALE;
 
     /// @notice deposit upper limit
     uint256 public depositLimit;
@@ -298,14 +298,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
                 isApprovedRewardToken[token] = false;
             }
         }
-    }
-
-    /**
-     * @notice set the scale
-     * @param _scale scale
-     */
-    function setScale(uint256 _scale) external onlyAdmin {
-        SCALE = _scale;
     }
 
     /**
