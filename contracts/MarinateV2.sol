@@ -394,12 +394,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
             if (info.amount == 0) {
                 _resetPaidRewards(to);
             }
-            if (isWhitelisted(from)) {
-                _collectRewards(from);
-            }
-            if (isWhitelisted(to)) {
-                _collectRewards(to);
-            }
+            _collectRewards(from);
+            _collectRewards(to);
         }
     }
 
