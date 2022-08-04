@@ -32,6 +32,7 @@ pragma solidity 0.8.4;
 // Libraries
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ContractWhitelist } from "./ContractWhitelist.sol";
@@ -45,6 +46,7 @@ import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Rec
 /// @title Umami MarinateV2 Staking
 /// @author 0xtoki luffyowls
 contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, ContractWhitelist {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
     /************************************************
@@ -57,14 +59,11 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice number of reward epochs paid to marinator
     mapping(address => mapping(address => uint256)) public paidTokenRewardsPerStake;
 
-    /// @notice if the token is an approved reward token
-    mapping(address => bool) public isApprovedRewardToken;
-
     /// @notice rewards due to be paid to marinator
     mapping(address => mapping(address => uint256)) public toBePaid;
 
     /// @notice an array of reward tokens to issue rewards in
-    address[] public rewardTokens;
+    EnumerableSet.AddressSet private rewardTokens;
 
     /// @notice is staking enabled
     bool public stakeEnabled;
@@ -122,8 +121,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         UMAMI = _UMAMI;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
-        rewardTokens.push(_UMAMI);
-        isApprovedRewardToken[_UMAMI] = true;
+        rewardTokens.add(_UMAMI);
         stakeEnabled = true;
         withdrawEnabled = false;
         transferEnabled = true;
@@ -194,7 +192,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param amount the amount of the token
      */
     function addReward(address token, uint256 amount) external nonReentrant {
-        require(isApprovedRewardToken[token], "Token is not approved");
+        require(rewardTokens.contains(token), "Token is not approved");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -209,8 +207,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function _payRewards(address user) private {
         require(payRewardsEnabled, "Pay rewards disabled");
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            address token = rewardTokens[i];
+        uint256 numberOfRewardTokens = rewardTokens.length();
+        for (uint256 i = 0; i < numberOfRewardTokens; i++) {
+            address token = rewardTokens.at(i);
             uint256 amount = toBePaid[token][user];
             IERC20(token).safeTransfer(user, amount);
             emit RewardClaimed(token, user, amount);
@@ -223,8 +222,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param user the user to reset rewards paid for
      */
     function _resetPaidRewards(address user) private {
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            address token = rewardTokens[i];
+        uint256 numberOfRewardTokens = rewardTokens.length();
+        for (uint256 i = 0; i < numberOfRewardTokens; i++) {
+            address token = rewardTokens.at(i);
             paidTokenRewardsPerStake[token][user] = totalTokenRewardsPerStake[token];
         }
     }
@@ -234,8 +234,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param user the amount of umami to stake
      */
     function _collectRewards(address user) private {
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            _collectRewardsForToken(rewardTokens[i], user);
+        uint256 numberOfRewardTokens = rewardTokens.length();
+        for (uint256 i = 0; i < numberOfRewardTokens; i++) {
+            _collectRewardsForToken(rewardTokens.at(i), user);
         }
     }
 
@@ -261,9 +262,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param token the address of the token to be paid in
      */
     function addApprovedRewardToken(address token) external onlyAdmin {
-        require(!isApprovedRewardToken[token], "Reward token exists");
-        isApprovedRewardToken[token] = true;
-        rewardTokens.push(token);
+        require(!rewardTokens.contains(token), "Reward token exists");
+        rewardTokens.add(token);
     }
 
     /**
@@ -271,15 +271,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param token the address of the token to remove
      */
     function removeApprovedRewardToken(address token) external onlyAdmin {
-        require(isApprovedRewardToken[token], "Reward token does not exist");
+        require(rewardTokens.contains(token), "Reward token does not exist");
         require(IERC20(token).balanceOf(address(this)) == 0, "Reward token not completely claimed by everyone yet");
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            if (rewardTokens[i] == token) {
-                rewardTokens[i] = rewardTokens[rewardTokens.length - 1];
-                rewardTokens.pop();
-                isApprovedRewardToken[token] = false;
-            }
-        }
+        rewardTokens.remove(token);
     }
 
     /**
