@@ -2,22 +2,22 @@
 pragma solidity 0.8.4;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 
 interface IMarinate {
     function addReward(address token, uint256 amount) external;
 }
 
 contract MarinateReceiver is AccessControl, ReentrancyGuard {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
+    EnumerableSet.AddressSet private distributedTokens;
     address public immutable UMAMI;
     IMarinate public marinateContract;
-    address[] public distributedTokens;
-    mapping(address => bool) public isDistributedToken;
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant AUTOMATION_ROLE = keccak256("AUTOMATION_ROLE");
     event RewardAdded(address token, uint256 amount);
@@ -30,10 +30,13 @@ contract MarinateReceiver is AccessControl, ReentrancyGuard {
     }
 
     function sendBalancesAsRewards() external onlyAdminOrAutomation nonReentrant {
-        for (uint256 i = 0; i < distributedTokens.length; i++) {
-            address token = distributedTokens[i];
+        uint256 numberOfDistributedTokens = distributedTokens.length();
+        for (uint256 i = 0; i < numberOfDistributedTokens; i++) {
+            address token = distributedTokens.at(i);
             uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-            if (tokenBalance == 0) { continue; }
+            if (tokenBalance == 0) {
+                continue;
+            }
             _addRewards(token, tokenBalance);
             emit RewardAdded(token, tokenBalance);
         }
@@ -45,18 +48,11 @@ contract MarinateReceiver is AccessControl, ReentrancyGuard {
     }
 
     function addDistributedToken(address token) external onlyAdmin {
-        isDistributedToken[token] = true;
-        distributedTokens.push(token);
+        distributedTokens.add(token);
     }
 
     function removeDistributedToken(address token) external onlyAdmin {
-        for (uint256 i = 0; i < distributedTokens.length; i++) {
-            if (distributedTokens[i] == token) {
-                distributedTokens[i] = distributedTokens[distributedTokens.length - 1];
-                distributedTokens.pop();
-                isDistributedToken[token] = false;
-            }
-        }
+        distributedTokens.remove(token);
     }
 
     function setMarinateAddress(address marinate) external onlyAdmin {
