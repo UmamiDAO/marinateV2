@@ -78,9 +78,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice allow payment of rewards
     bool public payRewardsEnabled;
 
-    /// @notice total UMAMI staked
-    uint256 public totalStaked;
-
     /// @notice scale used for calcs
     uint256 public immutable SCALE;
 
@@ -132,7 +129,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         transferEnabled = true;
         payRewardsEnabled = true;
         depositLimit = _depositLimit;
-        totalStaked = 0;
         SCALE = 1e40;
         _decimals = IERC20Metadata(_UMAMI).decimals();
     }
@@ -148,7 +144,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function stake(uint256 amount) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
-        require(totalStaked + amount <= depositLimit, "Deposit capacity reached");
+        require(totalSupply() + amount <= depositLimit, "Deposit capacity reached");
 
         uint256 balance = balanceOf(msg.sender);
         if (balance == 0) {
@@ -161,7 +157,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
         _mint(msg.sender, amount);
 
-        totalStaked += amount;
         emit Stake(msg.sender, amount);
     }
 
@@ -175,7 +170,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         _collectRewards(msg.sender);
         _payRewards(msg.sender);
 
-        totalStaked -= balance;
         IERC20(UMAMI).safeTransfer(msg.sender, balance);
         _burn(msg.sender, balance);
 
@@ -204,7 +198,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 rewardPerStake = (amount * SCALE) / totalStaked;
+        uint256 rewardPerStake = (amount * SCALE) / totalSupply();
         require(rewardPerStake > 0, "Insufficient reward per stake");
         totalTokenRewardsPerStake[token] += rewardPerStake;
         emit RewardAdded(token, amount, rewardPerStake);
