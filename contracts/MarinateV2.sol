@@ -38,6 +38,7 @@ import { ContractWhitelist } from "./ContractWhitelist.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
@@ -99,6 +100,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice address of the UMAMI token
     address public immutable UMAMI;
 
+    uint8 immutable _decimals;
+
     /************************************************
      *  EVENTS
      ***********************************************/
@@ -131,6 +134,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         depositLimit = _depositLimit;
         totalStaked = 0;
         SCALE = 1e40;
+        _decimals = IERC20Metadata(_UMAMI).decimals();
     }
 
     /************************************************
@@ -396,7 +400,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * {IERC20-balanceOf} and {IERC20-transfer}.
      */
     function decimals() public view virtual override returns (uint8) {
-        return 9;
+        return _decimals;
     }
 
     /************************************************
