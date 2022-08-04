@@ -164,6 +164,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function withdraw() public nonReentrant {
         require(withdrawEnabled, "Withdraw not enabled");
         uint256 balance = balanceOf(msg.sender);
+        require(balance > 0, "No staked balance");
 
         _collectRewards(msg.sender);
         _payRewards(msg.sender);
@@ -193,6 +194,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function addReward(address token, uint256 amount) external nonReentrant {
         require(rewardTokens.contains(token), "Token is not approved");
+        require(totalSupply() > 0, "Total staked is zero");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -405,18 +407,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         bytes calldata
     ) external pure override returns (bytes4) {
         return MarinateV2.onERC721Received.selector;
-    }
-
-    /************************************************
-     *  ADMIN
-     ***********************************************/
-
-    /**
-     * @notice recover eth
-     */
-    function recoverEth() external onlyAdmin {
-        (bool success, ) = msg.sender.call{ value: address(this).balance }("");
-        require(success, "Withdraw failed");
     }
 
     /************************************************
