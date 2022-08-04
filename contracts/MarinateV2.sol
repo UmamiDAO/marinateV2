@@ -59,9 +59,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     /// @notice if the token is an approved reward token
     mapping(address => bool) public isApprovedRewardToken;
 
-    /// @notice the marinator info for a marinator
-    mapping(address => Marinator) public marinatorInfo;
-
     /// @notice rewards due to be paid to marinator
     mapping(address => mapping(address => uint256)) public toBePaid;
 
@@ -101,14 +98,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
 
     /// @notice address of the UMAMI token
     address public immutable UMAMI;
-
-    /************************************************
-     *  STRUCTS
-     ***********************************************/
-
-    struct Marinator {
-        uint256 amount;
-    }
 
     /************************************************
      *  EVENTS
@@ -155,10 +144,10 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function stake(uint256 amount) external isEligibleSender {
         require(stakeEnabled, "Staking not enabled");
         require(amount > 0, "Invalid stake amount");
-        require(totalStaked < depositLimit, "Deposit capacity reached");
+        require(totalStaked + amount <= depositLimit, "Deposit capacity reached");
 
-        Marinator memory info = marinatorInfo[msg.sender];
-        if (info.amount == 0) {
+        uint256 balance = balanceOf(msg.sender);
+        if (balance == 0) {
             // new user - not eligible for any previous rewards on any token
             _resetPaidRewards(msg.sender);
         } else {
@@ -167,9 +156,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
 
         IERC20(UMAMI).safeTransferFrom(msg.sender, address(this), amount);
         _mint(msg.sender, amount);
-
-        // store the sender's info
-        marinatorInfo[msg.sender] = Marinator({ amount: info.amount + amount });
 
         totalStaked += amount;
         emit Stake(msg.sender, amount);
@@ -180,18 +166,16 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function withdraw() public nonReentrant {
         require(withdrawEnabled, "Withdraw not enabled");
-        Marinator memory info = marinatorInfo[msg.sender];
+        uint256 balance = balanceOf(msg.sender);
 
         _collectRewards(msg.sender);
         _payRewards(msg.sender);
 
-        delete marinatorInfo[msg.sender];
-        totalStaked -= info.amount;
+        totalStaked -= balance;
+        IERC20(UMAMI).safeTransfer(msg.sender, balance);
+        _burn(msg.sender, balance);
 
-        IERC20(UMAMI).safeTransfer(msg.sender, info.amount);
-        _burn(msg.sender, info.amount);
-
-        emit Withdraw(msg.sender, info.amount);
+        emit Withdraw(msg.sender, balance);
     }
 
     /************************************************
@@ -263,9 +247,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param user the amount of umami to stake
      */
     function _collectRewardsForToken(address token, address user) private {
-        Marinator memory info = marinatorInfo[user];
+        uint256 balance = balanceOf(user);
         uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][user];
-        uint256 totalRewards = (info.amount * owedPerUnitStake) / SCALE;
+        uint256 totalRewards = (balance * owedPerUnitStake) / SCALE;
         paidTokenRewardsPerStake[token][user] = totalTokenRewardsPerStake[token];
         toBePaid[token][user] += totalRewards;
     }
@@ -351,9 +335,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @return totalRewards - the available rewards for that token and marinator
      */
     function getAvailableTokenRewards(address staker, address token) external view returns (uint256 totalRewards) {
-        Marinator memory info = marinatorInfo[staker];
+        uint256 balance = balanceOf(staker);
         uint256 owedPerUnitStake = totalTokenRewardsPerStake[token] - paidTokenRewardsPerStake[token][staker];
-        uint256 pendingRewards = (info.amount * owedPerUnitStake) / SCALE;
+        uint256 pendingRewards = (balance * owedPerUnitStake) / SCALE;
         totalRewards = pendingRewards + toBePaid[token][staker];
     }
 
@@ -384,8 +368,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         if (from == address(0) || to == address(0)) {
             return;
         } else {
-            Marinator memory info = marinatorInfo[to];
-            if (info.amount == 0) {
+            uint256 balance = balanceOf(to);
+            if (balance == 0) {
                 _resetPaidRewards(to);
             }
             _collectRewards(from);
@@ -396,35 +380,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
     function _beforeRemoveFromContractWhitelist(address _contract) internal override {
         _collectRewards(_contract);
         _payRewards(_contract);
-    }
-
-    /**
-     * @dev Hook that is called after any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * has been transferred to `to`.
-     * - when `from` is zero, `amount` tokens have been minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
-     * - `from` and `to` are never both zero.
-     */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256
-    ) internal virtual override {
-        if (from == address(0) || to == address(0)) {
-            return;
-        } else {
-            uint256 fromBalance = balanceOf(from);
-            uint256 toBalance = balanceOf(to);
-
-            // update marinator info
-            marinatorInfo[from] = Marinator({ amount: fromBalance });
-            marinatorInfo[to] = Marinator({ amount: toBalance });
-        }
     }
 
     /**
