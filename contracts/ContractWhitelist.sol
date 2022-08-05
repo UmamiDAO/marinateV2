@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GNU GPLv3
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -31,6 +31,8 @@ abstract contract ContractWhitelist is Ownable {
     function removeFromContractWhitelist(address _contract) external returns (bool) {
         require(whitelistedContracts[_contract], "ContractWhitelist: Contract not whitelisted");
 
+        _beforeRemoveFromContractWhitelist(_contract);
+
         whitelistedContracts[_contract] = false;
 
         emit RemoveFromContractWhitelist(_contract);
@@ -38,11 +40,15 @@ abstract contract ContractWhitelist is Ownable {
         return true;
     }
 
+    function _beforeRemoveFromContractWhitelist(address _contract) internal virtual {}
+
     /* ==== MODIFIERS ==== */
 
     // Modifier is eligible sender modifier
     modifier isEligibleSender() {
-        require(isWhitelisted(msg.sender), "ContractWhitelist: Contract must be whitelisted");
+        if (!isSenderEOA()) {
+            require(whitelistedContracts[msg.sender], "ContractWhitelist: Contract must be whitelisted");
+        }
         _;
     }
 
@@ -55,6 +61,11 @@ abstract contract ContractWhitelist is Ownable {
             return whitelistedContracts[addr];
         }
         return true;
+    }
+
+    /// @dev checks if the sender is an EOA
+    function isSenderEOA() public view returns (bool) {
+        return tx.origin == msg.sender;
     }
 
     /// @dev checks for contract or eoa addresses
