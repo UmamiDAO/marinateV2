@@ -121,7 +121,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         UMAMI = _UMAMI;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
-        rewardTokens.add(_UMAMI);
+        require(rewardTokens.add(_UMAMI), "Reward token already exists");
         stakeEnabled = true;
         withdrawEnabled = false;
         transferEnabled = true;
@@ -264,8 +264,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param token the address of the token to be paid in
      */
     function addApprovedRewardToken(address token) external onlyAdmin {
-        require(!rewardTokens.contains(token), "Reward token exists");
-        rewardTokens.add(token);
+        require(rewardTokens.add(token), "Reward token exists");
     }
 
     /**
@@ -273,9 +272,8 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param token the address of the token to remove
      */
     function removeApprovedRewardToken(address token) external onlyAdmin {
-        require(rewardTokens.contains(token), "Reward token does not exist");
         require(IERC20(token).balanceOf(address(this)) == 0, "Reward token not completely claimed by everyone yet");
-        rewardTokens.remove(token);
+        require(rewardTokens.remove(token), "Reward token does not exist");
     }
 
     /**
