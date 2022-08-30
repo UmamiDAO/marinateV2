@@ -274,12 +274,6 @@ describe("MarinateV2", async function () {
       await expect(MarinateV2.addApprovedRewardToken(MockedERC20.address)).to.be.revertedWith("Reward token exists");
     });
 
-    it("RemoveReward Token", async function () {
-      await MarinateV2.addApprovedRewardToken(MockedERC20.address);
-      await MarinateV2.removeApprovedRewardToken(MockedERC20.address);
-      await expect(MarinateV2.removeApprovedRewardToken(MockedERC20.address)).to.be.revertedWith("");
-    });
-
     it("Add Reward Token - No duplicates", async function () {
       await expect(MarinateV2.addApprovedRewardToken(MockedUMAMI.address)).to.be.revertedWith("Reward token exists");
     });
@@ -356,20 +350,6 @@ describe("MarinateV2", async function () {
       expect(accountReward1).to.equal(one);
       expect(Reward).to.equal(half);
       expect(Reward1).to.equal(half);
-    });
-  });
-
-  describe("#removeApprovedRewardToken", async function () {
-    beforeEach(async () => {
-      await setup();
-      const _MockedERC20 = await ethers.getContractFactory("MockERC20");
-      MockedERC20 = await _MockedERC20.deploy("MCK", "MCK");
-    });
-
-    it("reverts if already added", async function () {
-      await expect(MarinateV2.connect(owner).removeApprovedRewardToken(MockedERC20.address)).to.revertedWith(
-        "Reward token does not exist",
-      );
     });
   });
 

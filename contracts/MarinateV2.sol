@@ -213,6 +213,9 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
         for (uint256 i = 0; i < numberOfRewardTokens; i++) {
             address token = rewardTokens.at(i);
             uint256 amount = toBePaid[token][user];
+            if (amount == 0) {
+                continue;
+            }
             IERC20(token).safeTransfer(user, amount);
             emit RewardClaimed(token, user, amount);
             delete toBePaid[token][user];
@@ -265,15 +268,6 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      */
     function addApprovedRewardToken(address token) external onlyAdmin {
         require(rewardTokens.add(token), "Reward token exists");
-    }
-
-    /**
-     * @notice remove a reward token
-     * @param token the address of the token to remove
-     */
-    function removeApprovedRewardToken(address token) external onlyAdmin {
-        require(IERC20(token).balanceOf(address(this)) == 0, "Reward token not completely claimed by everyone yet");
-        require(rewardTokens.remove(token), "Reward token does not exist");
     }
 
     /**
