@@ -307,6 +307,7 @@ contract MarinateV2 is AccessControl, IERC721Receiver, ReentrancyGuard, ERC20, C
      * @param limit upper limit for deposits
      */
     function setDepositLimit(uint256 limit) external onlyAdmin {
+        require(limit < IERC20(UMAMI).totalSupply(), "Deposit limit cannot be greater than totalSupply");
         depositLimit = limit;
     }
 
