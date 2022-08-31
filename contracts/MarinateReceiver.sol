@@ -48,11 +48,11 @@ contract MarinateReceiver is AccessControl, ReentrancyGuard {
     }
 
     function addDistributedToken(address token) external onlyAdmin {
-        distributedTokens.add(token);
+        require(distributedTokens.add(token), "Distribution token exists");
     }
 
     function removeDistributedToken(address token) external onlyAdmin {
-        distributedTokens.remove(token);
+        require(distributedTokens.remove(token), "Distribution token does not exist");
     }
 
     function setMarinateAddress(address marinate) external onlyAdmin {
